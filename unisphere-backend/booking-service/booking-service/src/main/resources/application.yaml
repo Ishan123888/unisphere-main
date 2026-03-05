@@ -4,15 +4,31 @@ server:
 spring:
   application:
     name: booking-service
-  # දැනට Database එකක් නැත්නම් Error එක එන එක නතර කරන්න මේක දාන්න
-  autoconfigure:
-    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+  # H2 Database Configuration
+  datasource:
+    url: jdbc:h2:mem:bookingdb
+    driver-className: org.h2.Driver
+    username: sa
+    password: password
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 
 eureka:
   client:
+    enabled: false # දැනට Eureka Warnings එන එක නවත්වන්න මේක false කරන්න
     service-url:
       defaultZone: http://localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
+    register-with-eureka: false # server එක නැති නිසා දැනට false කරන්න
+    fetch-registry: false
   instance:
     prefer-ip-address: true
