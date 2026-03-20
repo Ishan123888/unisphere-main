@@ -11,43 +11,57 @@ import java.util.List;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
-    private final NotificationService notificationService; // NotificationService එක මෙතනට සම්බන්ධ කළා
+    private final NotificationService notificationService;
 
-    // අලුත් බුකින් එකක් සේව් කරන මෙතඩ් එක
+    // 1. අලුත් බුකින් එකක් සේව් කිරීම
     public Booking createBooking(Booking booking) {
+        // Default status එක PENDING ලෙස සෙට් කිරීම (අවශ්‍ය නම්)
+        if (booking.getStatus() == null) {
+            booking.setStatus(Booking.BookingStatus.PENDING);
+        }
         Booking savedBooking = bookingRepository.save(booking);
-        // අලුත් බුකින් එකක් හැදුණු බව දැනුම් දීම
         notificationService.sendBookingNotification(savedBooking);
         return savedBooking;
     }
 
-    // හැම බුකින් එකක්ම ගන්න
+    // 2. සියලුම බුකින් ලබා ගැනීම
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
 
-    // ID එක අනුව බුකින් එකක් හොයන්න
+    // 3. නිශ්චිත ස්ටේටස් එකක් අනුව බුකින් පෙරීම (Admin Dashboard එකට ඉතා වැදගත්)
+    public List<Booking> getBookingsByStatus(String status) {
+        try {
+            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
+            return bookingRepository.findByStatus(bookingStatus);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status provided for filtering: " + status);
+        }
+    }
+
+    // 4. ID එක අනුව සෙවීම
     public Booking getBookingById(Long id) {
         return bookingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
     }
 
-    // බුකින් එකේ ස්ටේටස් එක වෙනස් කිරීම (Confirm/Cancel)
+    // 5. බුකින් එකේ ස්ටේටස් එක වෙනස් කිරීම
     public Booking updateStatus(Long id, String status) {
         Booking booking = getBookingById(id);
 
         try {
-            // String එක Enum එකකට හරවන නිවැරදි ක්‍රමය
             booking.setStatus(Booking.BookingStatus.valueOf(status.toUpperCase()));
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid status: " + status + ". Use PENDING, CONFIRMED, CANCELLED, or COMPLETED.");
         }
 
         Booking updatedBooking = bookingRepository.save(booking);
-
-        // ස්ටේටස් එක මාරු වුණු බව දැනුම් දීම (Email Trigger)
         notificationService.sendBookingNotification(updatedBooking);
-
         return updatedBooking;
+    }
+
+    // 6. Admin Stats සඳහා අවශ්‍ය Count ලබා ගැනීම
+    public long getTotalBookingCount() {
+        return bookingRepository.count();
     }
 }

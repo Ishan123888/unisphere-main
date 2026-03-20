@@ -7,6 +7,7 @@
         <option value="$PROJECT_DIR$/unisphere-backend/service-discovery/service-discovery/pom.xml" />
         <option value="$PROJECT_DIR$/unisphere-backend/booking-service/booking-service/pom.xml" />
         <option value="$PROJECT_DIR$/unisphere-backend/identity-service/pom.xml" />
+        <option value="$PROJECT_DIR$/unisphere-backend/api-gateway/api-gateway/pom.xml" />
       </list>
     </option>
   </component>

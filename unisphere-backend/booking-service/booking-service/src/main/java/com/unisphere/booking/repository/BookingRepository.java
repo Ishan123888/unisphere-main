@@ -8,9 +8,13 @@ import java.util.List;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    // ශිෂ්‍යයාගේ ID එක අනුව කරපු බුකින් ටික හොයන්න
+    // 1. ශිෂ්‍යයාගේ ID එක අනුව කරපු බුකින් ටික සෙවීමට
     List<Booking> findByStudentId(Long studentId);
 
-    // ටියුටර්ගේ ID එක අනුව එයාට ලැබුණු බුකින් ටික හොයන්න
+    // 2. ටියුටර්ගේ ID එක අනුව එයාට ලැබුණු බුකින් ටික සෙවීමට
     List<Booking> findByTutorId(Long tutorId);
+
+    // 3. Status එක (PENDING, CONFIRMED etc.) අනුව බුකින් පෙරීමට
+    // Admin Dashboard එකේ "Pending Approvals" පෙන්වීමට මෙය අත්‍යවශ්‍ය වේ.
+    List<Booking> findByStatus(Booking.BookingStatus status);
 }

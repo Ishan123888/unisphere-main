@@ -20,23 +20,33 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
-    /**
-     * අලුත් සාමාජිකයෙක් සේව් කිරීම (BCrypt hashing සමඟ)
-     */
     public String saveUser(UserCredential credential) {
+        // ✅ Fix 1: Username duplicate check
+        if (repository.findByUsername(credential.getUsername()).isPresent()) {
+            throw new RuntimeException("Username '" + credential.getUsername() + "' දැනටමත් register වෙලා තිබෙනවා!");
+        }
+
+        // ✅ Fix 2: Role null නම් default STUDENT set කිරීම
+        if (credential.getRole() == null || credential.getRole().isBlank()) {
+            credential.setRole("STUDENT");
+        }
+
+        // ✅ Fix 3: Valid roles පමණක් allow කිරීම
+        String role = credential.getRole().toUpperCase().trim();
+        if (!role.equals("STUDENT") && !role.equals("TUTOR") && !role.equals("ADMIN")) {
+            throw new RuntimeException("Invalid role: " + role);
+        }
+        credential.setRole(role);
+
         credential.setPassword(passwordEncoder.encode(credential.getPassword()));
         repository.save(credential);
         return "Member සාර්ථකව පද්ධතියට එක් කරන ලදී!";
     }
 
-    /**
-     * සාර්ථකව ලොග් වූ පසු Token එක සහ Role එක ලබාදීම
-     */
     public AuthResponse generateToken(String username) {
         UserCredential user = repository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found with username: " + username));
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        // JwtService එකේ generateToken(String username, String role) ලෙස තිබිය යුතුය
         String token = jwtService.generateToken(username, user.getRole());
 
         return AuthResponse.builder()
@@ -45,13 +55,10 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Token එක වලංගු ද කියා පරීක්ෂා කිරීම (Gateway/Internal validation)
-     */
     public void validateToken(final String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(jwtService.getSignKey()) // පරීක්ෂා කරන්න: JwtService හි getSignKey() public ද කියා
+                    .setSigningKey(jwtService.getSignKey())
                     .build()
                     .parseClaimsJws(token);
         } catch (Exception e) {

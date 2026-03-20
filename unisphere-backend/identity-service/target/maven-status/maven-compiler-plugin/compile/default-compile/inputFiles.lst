@@ -7,4 +7,5 @@ G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\config\AuthConfig.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\repository\UserCredentialRepository.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\service\CustomerUserDetails.java
+G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\filter\JwtAuthenticationFilter.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\IdentityServiceApplication.java

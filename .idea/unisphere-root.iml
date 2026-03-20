@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/unisphere-backend/api-gateway/api-gateway/src/main/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/unisphere-backend/booking-service/booking-service/src/main/java" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />

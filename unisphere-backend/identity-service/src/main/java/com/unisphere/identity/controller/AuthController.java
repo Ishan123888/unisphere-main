@@ -4,14 +4,19 @@ import com.unisphere.identity.dto.AuthResponse;
 import com.unisphere.identity.entity.UserCredential;
 import com.unisphere.identity.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/auth")
-@CrossOrigin(origins = "*") // Frontend එකට සම්බන්ධ වීමට අනිවාර්යයෙන්ම අවශ්‍යයි
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -20,38 +25,72 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    /**
-     * අලුත් සාමාජිකයෙක් ලියාපදිංචි කිරීම
-     */
+    // ✅ Fix: ResponseEntity<?> නිසා error message හරියට frontend එකට යනවා
     @PostMapping("/register")
-    public String addNewUser(@RequestBody UserCredential user) {
-        return service.saveUser(user);
-    }
+    public ResponseEntity<?> addNewUser(@RequestBody UserCredential user) {
+        try {
+            // Debug log — IntelliJ console එකේ role එක confirm කරගන්න
+            System.out.println(">>> REGISTER REQUEST | Username: "
+                    + user.getUsername()
+                    + " | Role: " + user.getRole()
+                    + " | Email: " + user.getEmail());
 
-    /**
-     * ලොග් වූ පසු Token එක සහ Role එක ලබාදීම
-     */
-    @PostMapping("/login")
-    public AuthResponse getToken(@RequestBody UserCredential user) {
-        // 1. Username සහ Password පරීක්ෂා කිරීම
-        Authentication authenticate = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
-        );
+            String result = service.saveUser(user);
+            return ResponseEntity.ok(Map.of("message", result));
 
-        if (authenticate.isAuthenticated()) {
-            // 2. Token එක සහ Role එක අඩංගු AuthResponse ලබා ගැනීම
-            return service.generateToken(user.getUsername());
-        } else {
-            throw new RuntimeException("පද්ධතියට ඇතුළු වීමට අවසර නැත (Invalid Access)");
+        } catch (Exception e) {
+            System.err.println(">>> REGISTER ERROR: " + e.getMessage());
+            // ✅ Frontend එකේ error.response.data.message හරියට catch වෙනවා
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
         }
     }
 
-    /**
-     * Token එක Valid ද කියා පරීක්ෂා කිරීම (Optional - Gateway එකට අවශ්‍ය වේ)
-     */
+    // ✅ Fix: Login error ද හරියට handle කිරීම
+    @PostMapping("/login")
+    public ResponseEntity<?> getToken(@RequestBody UserCredential user) {
+        try {
+            System.out.println(">>> LOGIN REQUEST | Username: " + user.getUsername());
+
+            Authentication authenticate = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword())
+            );
+
+            if (authenticate.isAuthenticated()) {
+                AuthResponse response = service.generateToken(user.getUsername());
+                System.out.println(">>> LOGIN SUCCESS | Role: " + response.getRole());
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Invalid credentials!"));
+            }
+
+        } catch (BadCredentialsException e) {
+            System.err.println(">>> LOGIN FAILED: Bad credentials for " + user.getUsername());
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Username හෝ Password වැරදියි!"));
+        } catch (Exception e) {
+            System.err.println(">>> LOGIN ERROR: " + e.getMessage());
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/validate")
-    public String validateToken(@RequestParam("token") String token) {
-        service.validateToken(token);
-        return "Token is valid";
+    public ResponseEntity<?> validateToken(@RequestParam("token") String token) {
+        try {
+            service.validateToken(token);
+            return ResponseEntity.ok(Map.of("message", "Token is valid"));
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid or Expired Token!"));
+        }
     }
 }
+
+
