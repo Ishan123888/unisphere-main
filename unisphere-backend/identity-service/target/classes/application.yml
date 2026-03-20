@@ -7,9 +7,9 @@ spring:
 
   # Database සම්බන්ධතාවය
   datasource:
-    url: JDBC:mysql://localhost:3306/unisphere_identity?createDatabaseIfNotExist=true
+    url: JDBC:mysql://localhost:3300/unisphere_identity?createDatabaseIfNotExist=true
     username: root
-    password:  # මෙතනට ඔයාගේ MySQL Password එක දාන්න ⚠️
+    password: 31415
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # Hibernate Settings (Table එක auto හැදෙන්න)
