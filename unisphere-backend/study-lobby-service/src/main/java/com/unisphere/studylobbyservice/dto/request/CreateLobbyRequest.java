@@ -14,7 +14,7 @@ public class CreateLobbyRequest {
     @Size(min = 3, max = 100, message = "Title must be between 3 and 100 characters")
     private String title;
 
-    @NotNull(message = "Max participants is required")
+    @NotNull
     @Min(value = 2, message = "Minimum 2 participants allowed")
     @Max(value = 10, message = "Maximum 10 participants allowed")
     private Integer maxParticipants;
