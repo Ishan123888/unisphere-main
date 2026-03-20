@@ -1,4 +1,4 @@
-package com.vehiclerentalsystem.studylobbyservice;
+package com.unisphere.studylobbyservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

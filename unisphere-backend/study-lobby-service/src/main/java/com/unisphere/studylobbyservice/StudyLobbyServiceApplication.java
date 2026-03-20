@@ -1,4 +1,4 @@
-package com.vehiclerentalsystem.studylobbyservice;
+package com.unisphere.studylobbyservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
