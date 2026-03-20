@@ -1,9 +1,10 @@
 package com.unisphere.studylobbyservice.dto.request;
 
-import com.sun.istack.NotNull;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+@Data
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor

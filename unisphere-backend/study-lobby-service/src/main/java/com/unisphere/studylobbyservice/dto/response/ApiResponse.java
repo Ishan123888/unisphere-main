@@ -2,6 +2,7 @@ package com.unisphere.studylobbyservice.dto.response;
 
 import lombok.*;
 
+@Data
 @Getter
 @Setter
 @NoArgsConstructor

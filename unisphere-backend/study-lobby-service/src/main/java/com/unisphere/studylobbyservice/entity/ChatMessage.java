@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Data
 public class ChatMessage {
 
     @Id

@@ -3,6 +3,8 @@ package com.unisphere.studylobbyservice.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+@Data
+@Builder
 @Getter
 @Setter
 @NoArgsConstructor

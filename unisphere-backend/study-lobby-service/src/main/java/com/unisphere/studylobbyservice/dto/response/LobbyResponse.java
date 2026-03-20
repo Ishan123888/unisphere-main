@@ -4,6 +4,7 @@ import com.unisphere.studylobbyservice.enums.LobbyStatus;
 import lombok.*;
 import java.time.LocalDateTime;
 
+@Data
 @Getter
 @Setter
 @NoArgsConstructor
