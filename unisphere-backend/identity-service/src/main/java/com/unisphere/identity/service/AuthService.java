@@ -23,7 +23,7 @@ public class AuthService {
     public String saveUser(UserCredential credential) {
         // ✅ Fix 1: Username duplicate check
         if (repository.findByUsername(credential.getUsername()).isPresent()) {
-            throw new RuntimeException("Username '" + credential.getUsername() + "' දැනටමත් register වෙලා තිබෙනවා!");
+            throw new RuntimeException("Username '" + credential.getUsername() + "' is already Registered!");
         }
 
         // ✅ Fix 2: Role null නම් default STUDENT set කිරීම
