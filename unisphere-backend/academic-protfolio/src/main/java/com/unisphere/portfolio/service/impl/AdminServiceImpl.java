@@ -3,20 +3,31 @@ package com.unisphere.portfolio.service.impl;
 import com.unisphere.portfolio.entity.*;
 import com.unisphere.portfolio.repository.*;
 import com.unisphere.portfolio.service.AdminService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
 
     private final AchievementRepository achievementRepository;
     private final StudentRepository studentRepository;
     private final BadgeRepository badgeRepository;
     private final StudentBadgeRepository studentBadgeRepository;
+
+    // MANUAL CONSTRUCTOR (NO LOMBOK)
+    public AdminServiceImpl(
+            AchievementRepository achievementRepository,
+            StudentRepository studentRepository,
+            BadgeRepository badgeRepository,
+            StudentBadgeRepository studentBadgeRepository
+    ) {
+        this.achievementRepository = achievementRepository;
+        this.studentRepository = studentRepository;
+        this.badgeRepository = badgeRepository;
+        this.studentBadgeRepository = studentBadgeRepository;
+    }
 
     @Override
     public List<Achievement> getPendingAchievements() {
@@ -33,6 +44,8 @@ public class AdminServiceImpl implements AdminService {
         achievement.setUpdatedAt(LocalDateTime.now());
 
         Achievement saved = achievementRepository.save(achievement);
+
+        //auto badge assign
         autoAssignBadge(saved.getStudent().getId());
 
         return saved;
@@ -64,29 +77,36 @@ public class AdminServiceImpl implements AdminService {
         return studentRepository.save(student);
     }
 
+    // FIXED METHOD (NO BUILDER)
     private void autoAssignBadge(Long studentId) {
-        long approvedCount = achievementRepository.countByStudentIdAndStatus(studentId, AchievementStatus.APPROVED);
+
+        long approvedCount = achievementRepository
+                .countByStudentIdAndStatus(studentId, AchievementStatus.APPROVED);
 
         if (approvedCount >= 5) {
-            Badge badge = badgeRepository.findByBadgeName("Verified Achiever")
-                    .orElseGet(() -> badgeRepository.save(
-                            Badge.builder()
-                                    .badgeName("Verified Achiever")
-                                    .description("Awarded after 5 approved achievements")
-                                    .build()
-                    ));
 
-            boolean alreadyExists = studentBadgeRepository.existsByStudentIdAndBadgeId(studentId, badge.getId());
+            // ✅ create badge manually if not exists
+            Badge badge = badgeRepository.findByBadgeName("Verified Achiever")
+                    .orElseGet(() -> {
+                        Badge newBadge = new Badge();
+                        newBadge.setBadgeName("Verified Achiever");
+                        newBadge.setDescription("Awarded after 5 approved achievements");
+                        return badgeRepository.save(newBadge);
+                    });
+
+            boolean alreadyExists =
+                    studentBadgeRepository.existsByStudentIdAndBadgeId(studentId, badge.getId());
 
             if (!alreadyExists) {
+
                 Student student = studentRepository.findById(studentId)
                         .orElseThrow(() -> new RuntimeException("Student not found"));
 
-                StudentBadge studentBadge = StudentBadge.builder()
-                        .student(student)
-                        .badge(badge)
-                        .assignedAt(LocalDateTime.now())
-                        .build();
+                //create StudentBadge manually
+                StudentBadge studentBadge = new StudentBadge();
+                studentBadge.setStudent(student);
+                studentBadge.setBadge(badge);
+                studentBadge.setAssignedAt(LocalDateTime.now());
 
                 studentBadgeRepository.save(studentBadge);
             }
