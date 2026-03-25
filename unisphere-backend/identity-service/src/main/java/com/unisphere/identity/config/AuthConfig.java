@@ -28,7 +28,6 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class AuthConfig {
 
-    // ✅ @Autowired නොකර — circular dependency fix
     @Bean
     public UserDetailsService userDetailsService() {
         return new CustomerUserDetailsService();
@@ -41,10 +40,12 @@ public class AuthConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // ── Public endpoints ──────────────────────────────
                         .requestMatchers(
                                 "/auth/register",
                                 "/auth/login",
-                                "/auth/validate"
+                                "/auth/validate",
+                                "/api/users/**"       // tutor list, approve, reject
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
@@ -54,7 +55,6 @@ public class AuthConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
-                // ✅ Method parameter ලෙස inject කිරීම — circular reference නෑ
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
                 .build();
@@ -65,7 +65,9 @@ public class AuthConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
-                "http://localhost:8080"
+                "http://localhost:3001",
+                "http://localhost:8080",
+                "http://localhost:8082"
         ));
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"

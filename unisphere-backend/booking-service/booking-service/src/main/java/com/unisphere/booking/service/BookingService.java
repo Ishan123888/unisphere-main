@@ -4,7 +4,10 @@ import com.unisphere.booking.model.Booking;
 import com.unisphere.booking.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -13,55 +16,51 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final NotificationService notificationService;
 
-    // 1. අලුත් බුකින් එකක් සේව් කිරීම
+    /* ── Create booking ─────────────────────────────────────────── */
     public Booking createBooking(Booking booking) {
-        // Default status එක PENDING ලෙස සෙට් කිරීම (අවශ්‍ය නම්)
-        if (booking.getStatus() == null) {
-            booking.setStatus(Booking.BookingStatus.PENDING);
+        // Generate unique booking ref
+        if (booking.getBookingRef() == null || booking.getBookingRef().isEmpty()) {
+            booking.setBookingRef("UNI-" + String.format("%03d",
+                    (int)(bookingRepository.count() + 1)));
         }
-        Booking savedBooking = bookingRepository.save(booking);
-        notificationService.sendBookingNotification(savedBooking);
-        return savedBooking;
+        booking.setStatus(Booking.BookingStatus.PENDING);
+        Booking saved = bookingRepository.save(booking);
+        notificationService.notifyBookingCreated(saved);
+        return saved;
     }
 
-    // 2. සියලුම බුකින් ලබා ගැනීම
+    /* ── Get by student username ────────────────────────────────── */
+    public List<Booking> getBookingsByStudentUsername(String username) {
+        return bookingRepository.findByStudentUsernameOrderByCreatedAtDesc(username);
+    }
+
+    /* ── Get by tutor ID ────────────────────────────────────────── */
+    public List<Booking> getBookingsByTutorId(Long tutorId) {
+        return bookingRepository.findByTutorIdOrderByCreatedAtDesc(tutorId);
+    }
+
+    /* ── Get all bookings ───────────────────────────────────────── */
     public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+        return bookingRepository.findAllByOrderByCreatedAtDesc();
     }
 
-    // 3. නිශ්චිත ස්ටේටස් එකක් අනුව බුකින් පෙරීම (Admin Dashboard එකට ඉතා වැදගත්)
-    public List<Booking> getBookingsByStatus(String status) {
-        try {
-            Booking.BookingStatus bookingStatus = Booking.BookingStatus.valueOf(status.toUpperCase());
-            return bookingRepository.findByStatus(bookingStatus);
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid status provided for filtering: " + status);
-        }
+    /* ── Get by ID ──────────────────────────────────────────────── */
+    public Optional<Booking> getBookingById(Long id) {
+        return bookingRepository.findById(id);
     }
 
-    // 4. ID එක අනුව සෙවීම
-    public Booking getBookingById(Long id) {
-        return bookingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Booking not found with id: " + id));
-    }
-
-    // 5. බුකින් එකේ ස්ටේටස් එක වෙනස් කිරීම
+    /* ── Update status ──────────────────────────────────────────── */
     public Booking updateStatus(Long id, String status) {
-        Booking booking = getBookingById(id);
-
-        try {
-            booking.setStatus(Booking.BookingStatus.valueOf(status.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid status: " + status + ". Use PENDING, CONFIRMED, CANCELLED, or COMPLETED.");
-        }
-
-        Booking updatedBooking = bookingRepository.save(booking);
-        notificationService.sendBookingNotification(updatedBooking);
-        return updatedBooking;
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found: " + id));
+        booking.setStatus(Booking.BookingStatus.valueOf(status.toUpperCase()));
+        Booking updated = bookingRepository.save(booking);
+        notificationService.notifyStatusChange(updated);
+        return updated;
     }
 
-    // 6. Admin Stats සඳහා අවශ්‍ය Count ලබා ගැනීම
-    public long getTotalBookingCount() {
-        return bookingRepository.count();
+    /* ── Cancel booking ─────────────────────────────────────────── */
+    public Booking cancelBooking(Long id) {
+        return updateStatus(id, "CANCELLED");
     }
 }

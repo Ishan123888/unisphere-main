@@ -3,6 +3,7 @@ G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\service\AuthService.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\service\JwtService.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\entity\UserCredential.java
+G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\controller\TutorController.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\dto\AuthResponse.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\config\AuthConfig.java
 G:\unisphere-root\unisphere-backend\identity-service\src\main\java\com\unisphere\identity\repository\UserCredentialRepository.java

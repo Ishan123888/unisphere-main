@@ -1,1 +1,2 @@
 com\unisphere\identity\filter\JwtAuthenticationFilter.class
+com\unisphere\identity\controller\TutorController.class
