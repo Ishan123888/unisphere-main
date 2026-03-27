@@ -592,7 +592,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
                         </p>
                       </div>
                     ))
-                  }
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
 
