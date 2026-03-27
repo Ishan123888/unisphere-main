@@ -221,6 +221,35 @@ public class LobbyService {
                 .collect(Collectors.toList());
     }
 
+    // GET ALL LOBBIES
+    public List<LobbyResponse> getAllLobbies() {
+        return lobbyRepository.findAll()
+                .stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(this::mapToLobbyResponse)
+                .collect(Collectors.toList());
+    }
+
+    // DELETE LOBBY
+    @Transactional
+    public void deleteLobby(String lobbyCode, String userId) {
+        Lobby lobby = findLobbyByCode(lobbyCode);
+
+        // Only host can delete the lobby
+        if (!lobby.getHostUserId().equals(userId)) {
+            throw new LobbyException("Only the lobby host can delete this lobby", 403);
+        }
+
+        // Delete all chat messages first
+        chatMessageRepository.deleteByLobby(lobby);
+
+        // Delete all participants
+        participantRepository.deleteByLobby(lobby);
+
+        // Finally delete the lobby
+        lobbyRepository.delete(lobby);
+    }
+
     // HELPERS
 
     private Lobby findLobbyByCode(String lobbyCode) {

@@ -79,4 +79,17 @@ public class LobbyController {
             @PathVariable String lobbyCode) {
         return ResponseEntity.ok(ApiResponse.success("Chat history fetched", lobbyService.getChatHistory(lobbyCode)));
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<LobbyResponse>>> getAllLobbies() {
+        return ResponseEntity.ok(ApiResponse.success("Lobbies fetched", lobbyService.getAllLobbies()));
+    }
+
+    @DeleteMapping("/{lobbyCode}")
+    public ResponseEntity<ApiResponse<Void>> deleteLobby(
+            @PathVariable String lobbyCode,
+            @RequestParam String userId) {
+        lobbyService.deleteLobby(lobbyCode, userId);
+        return ResponseEntity.ok(ApiResponse.success("Lobby deleted successfully", null));
+    }
 }

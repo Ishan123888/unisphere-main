@@ -13,4 +13,5 @@ public interface LobbyParticipantRepository extends JpaRepository<LobbyParticipa
     Optional<LobbyParticipant> findByLobbyAndUserId(Lobby lobby, String userId);
     List<LobbyParticipant> findByLobbyAndActive(Lobby lobby, boolean active);
     boolean existsByLobbyAndUserId(Lobby lobby, String userId);
+    void deleteByLobby(Lobby lobby);
 }
