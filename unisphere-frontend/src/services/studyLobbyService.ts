@@ -190,5 +190,30 @@ export const studyLobbyService = {
       throw error;
     }
   },
-};
 
+  // Get all lobbies
+  getAllLobbies: async (): Promise<LobbyResponse[]> => {
+    try {
+      const response = await axios.get<ApiResponse<LobbyResponse[]>>(
+        `${STUDY_LOBBY_API_BASE}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching lobbies:', error);
+      throw error;
+    }
+  },
+
+  // Delete a lobby
+  deleteLobby: async (lobbyCode: string, userId: string): Promise<void> => {
+    try {
+      await axios.delete(
+        `${STUDY_LOBBY_API_BASE}/${lobbyCode}`,
+        { params: { userId } }
+      );
+    } catch (error) {
+      console.error('Error deleting lobby:', error);
+      throw error;
+    }
+  },
+};

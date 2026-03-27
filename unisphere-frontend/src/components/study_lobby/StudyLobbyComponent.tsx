@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { studyLobbyService, LobbyResponse, ParticipantResponse, ChatMessageResponse } from '@/services/studyLobbyService';
+import LobbyCard from './LobbyCard';
 
 interface User {
   id: string;
@@ -44,10 +45,22 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch initial lobbies (mock - in real scenario would fetch from API)
+  // Fetch initial lobbies from API
   useEffect(() => {
-    if (view === 'browse' && lobbies.length === 0) {
-      // Mock lobbies for demonstration
+    if (view === 'browse') {
+      fetchLobbies();
+    }
+  }, [view]);
+
+  // Function to fetch lobbies from API
+  const fetchLobbies = async () => {
+    setLoading(true);
+    try {
+      const fetchedLobbies = await studyLobbyService.getAllLobbies();
+      setLobbies(fetchedLobbies);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch lobbies');
+      // Fallback to mock data if API fails
       const mockLobbies: LobbyResponse[] = [
         {
           id: 1,
@@ -93,8 +106,10 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
         },
       ];
       setLobbies(mockLobbies);
+    } finally {
+      setLoading(false);
     }
-  }, [view]);
+  };
 
   // Poll for new messages if in lobby
   useEffect(() => {
@@ -173,24 +188,27 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
     }
   };
 
-  // Browse Lobby Handler
+  // Browse Lobby Handler - Now actually joins the lobby
   const handleBrowseLobby = async (lobbyCode: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const lobby = await studyLobbyService.getLobby(lobbyCode);
-      setCurrentLobby(lobby);
+      // Actually join the lobby instead of just viewing it
+      const lobby = await studyLobbyService.joinLobby({
+        lobbyCode: lobbyCode,
+        userId: user.id,
+        username: user.username,
+      });
 
+      setCurrentLobby(lobby);
       const parts = await studyLobbyService.getParticipants(lobbyCode);
       setParticipants(parts);
-
       const msgs = await studyLobbyService.getChatHistory(lobbyCode);
       setMessages(msgs);
-
       setView('lobby');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load lobby');
+      setError(err.response?.data?.message || 'Failed to join lobby');
     } finally {
       setLoading(false);
     }
@@ -236,12 +254,30 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
     }
   };
 
+  // Delete Lobby Handler (Newly Added)
+  const handleDeleteLobby = async () => {
+    if (!currentLobby) return;
+
+    setLoading(true);
+    try {
+      await studyLobbyService.deleteLobby(currentLobby.lobbyCode, user.id);
+      setCurrentLobby(null);
+      setParticipants([]);
+      setMessages([]);
+      setView('browse');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to delete lobby');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER: Browse Lobbies View
   // ═══════════════════════════════════════════════════════════════════════
   if (view === 'browse') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900">
         {/* Header */}
         <div className="px-4 py-8 sm:px-6 lg:px-8 bg-black/40 backdrop-blur-sm border-b border-purple-500/20">
           <div className="max-w-6xl mx-auto">
@@ -266,7 +302,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setView('create')}
-                className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+                className="px-5 py-2.5 bg-linear-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all"
               >
                 ➕ Create Lobby
               </button>
@@ -300,80 +336,12 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {lobbies.map((lobby) => (
-                  <div
+                  <LobbyCard
                     key={lobby.lobbyCode}
-                    className="bg-slate-800/50 border border-purple-500/30 rounded-xl p-5 hover:border-purple-500/60 transition-all group"
-                  >
-                    {/* Lobby Title */}
-                    <h3 className="font-bold text-white text-lg mb-3 line-clamp-2 group-hover:text-purple-300 transition-colors">
-                      {lobby.title}
-                    </h3>
-
-                    {/* Lobby Info */}
-                    <div className="space-y-2 mb-4 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Code:</span>
-                        <span className="font-mono text-purple-300">{lobby.lobbyCode}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Host:</span>
-                        <span className="text-slate-200">{lobby.hostUsername}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Participants:</span>
-                        <span className={`font-bold ${lobby.isFull ? 'text-red-400' : 'text-emerald-400'}`}>
-                          {lobby.currentCount}/{lobby.maxParticipants}
-                        </span>
-                      </div>
-
-                      {/* Capacity Bar */}
-                      <div className="w-full bg-slate-700 rounded-full h-2 mt-3 overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${
-                            lobby.isFull
-                              ? 'bg-red-500'
-                              : lobby.currentCount / lobby.maxParticipants > 0.7
-                                ? 'bg-amber-500'
-                                : 'bg-emerald-500'
-                          }`}
-                          style={{
-                            width: `${(lobby.currentCount / lobby.maxParticipants) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Status Badge */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span
-                        className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                          lobby.status === 'ACTIVE'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-slate-600/50 text-slate-300'
-                        }`}
-                      >
-                        {lobby.status}
-                      </span>
-                      {lobby.isFull && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-500/20 text-red-400">
-                          🔴 Full
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Join Button */}
-                    <button
-                      onClick={() => handleBrowseLobby(lobby.lobbyCode)}
-                      disabled={lobby.isFull || loading}
-                      className={`w-full py-2 font-bold rounded-lg transition-all text-sm ${
-                        lobby.isFull
-                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {loading ? '⏳ Joining...' : '👉 Join Lobby'}
-                    </button>
-                  </div>
+                    lobby={lobby}
+                    onJoin={handleBrowseLobby}
+                    loading={loading}
+                  />
                 ))}
               </div>
             )}
@@ -388,7 +356,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
   // ═══════════════════════════════════════════════════════════════════════
   if (view === 'create') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
           <button
@@ -458,7 +426,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
                 className={`w-full py-3 font-bold rounded-lg transition-all text-white ${
                   loading || !createForm.title.trim()
                     ? 'bg-slate-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:shadow-lg hover:shadow-purple-500/50'
+                    : 'bg-linear-to-r from-purple-500 to-indigo-600 hover:shadow-lg hover:shadow-purple-500/50'
                 }`}
               >
                 {loading ? '⏳ Creating...' : '✨ Create Lobby'}
@@ -475,7 +443,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
   // ═══════════════════════════════════════════════════════════════════════
   if (view === 'join') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
           <button
@@ -523,7 +491,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
                 className={`w-full py-3 font-bold rounded-lg transition-all text-white ${
                   loading || !joinForm.lobbyCode.trim()
                     ? 'bg-slate-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:shadow-lg hover:shadow-purple-500/50'
+                    : 'bg-linear-to-r from-purple-500 to-indigo-600 hover:shadow-lg hover:shadow-purple-500/50'
                 }`}
               >
                 {loading ? '⏳ Joining...' : '🔗 Join Lobby'}
@@ -542,7 +510,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
     const isHost = currentLobby.hostUserId === user.id;
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
+      <div className="min-h-screen bg-linear-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col">
         {/* Header */}
         <div className="px-4 py-4 sm:px-6 lg:px-8 bg-black/40 backdrop-blur-sm border-b border-purple-500/20 flex-shrink-0">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -562,13 +530,24 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
               </p>
             </div>
 
-            <button
-              onClick={handleLeaveLobby}
-              disabled={loading}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-sm"
-            >
-              {loading ? '⏳' : '🚪'} Leave
-            </button>
+            <div className="flex gap-2">
+              {isHost && (
+                <button
+                  onClick={handleDeleteLobby}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white font-bold rounded-lg transition-all text-sm"
+                >
+                  {loading ? '⏳' : '🗑️'} Delete
+                </button>
+              )}
+              <button
+                onClick={handleLeaveLobby}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all text-sm"
+              >
+                {loading ? '⏳' : '🚪'} Leave
+              </button>
+            </div>
           </div>
         </div>
 
@@ -613,7 +592,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
                         </p>
                       </div>
                     ))
-                  )}
+                  }
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -659,7 +638,7 @@ export default function StudyLobbyComponent({ currentUser }: StudyLobbyComponent
                   key={participant.id}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-700/30 hover:bg-slate-700/50 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-bold text-white">
                       {participant.username.charAt(0).toUpperCase()}
                     </span>

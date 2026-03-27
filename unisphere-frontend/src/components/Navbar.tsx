@@ -47,6 +47,10 @@ export default function Navbar() {
 
   // ── All module links redirect to /login (auth required) ──────────
   const NAV_LINKS = [
+    { label: '📚 Study Lobby', path: '/study-lobby', icon: '📚' },
+    { label: '💬 Chat', path: '/chat', icon: '💬' },
+    { label: '📖 Tutor Booking', path: '/tutor-booking', icon: '📖' },
+    { label: '📋 Contact', path: '/contact', icon: '📋' },
   ];
 
   return (
