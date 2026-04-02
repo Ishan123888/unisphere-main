@@ -1,5 +1,6 @@
 "use client";
 
+import "../portfolio.css";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminLogin } from "../../../lib/api";
@@ -42,7 +43,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="login-container">
+    <div className="portfolio-root login-container">
       <Toast toasts={toasts} removeToast={removeToast} />
       
       <div className="login-card">

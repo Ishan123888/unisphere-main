@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import "../../src/app/portfolio.css";
 import { useState, useMemo } from "react";
 import { deleteAchievement } from "../../lib/api";
 import Modal from "../Modal";

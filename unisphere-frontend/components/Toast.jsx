@@ -1,5 +1,6 @@
 "use client";
 
+import "../src/app/portfolio.css";
 import { useEffect } from "react";
 
 const ICONS = {

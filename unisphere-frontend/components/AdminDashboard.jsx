@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import "../src/app/portfolio.css";
 import { useEffect, useState } from "react";
 import { approveAchievement, getPendingAchievements, rejectAchievement, suspendStudent } from "../lib/api";
 import Modal from "./Modal";

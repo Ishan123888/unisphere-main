@@ -1,5 +1,6 @@
 "use client";
 
+import "../portfolio.css";
 import Navbar from "../../../components/Navbar";
 import AdminDashboard from "../../../components/AdminDashboard";
 import Toast from "../../../components/Toast";
@@ -9,7 +10,7 @@ export default function AdminPage() {
   const { toasts, removeToast, toast } = useToast();
 
   return (
-    <div>
+    <div className="portfolio-root">
       <Navbar />
       <main className="page">
         <div className="section-header" style={{ marginBottom: 28 }}>

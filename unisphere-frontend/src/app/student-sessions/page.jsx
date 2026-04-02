@@ -1,5 +1,6 @@
 "use client";
 
+import "../portfolio.css";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Toast from "../../../components/Toast";
@@ -651,7 +652,7 @@ export default function StudentSessionsPage() {
   };
 
   return (
-    <div className="student-sessions-page">
+    <div className="portfolio-root student-sessions-page">
       <Toast toasts={toasts} removeToast={removeToast} />
 
       {/* Navigation Bar */}

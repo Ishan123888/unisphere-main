@@ -1,5 +1,6 @@
 "use client";
 
+import "../portfolio.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AchievementForm from "../../../components/achievements/AchievementForm";
@@ -135,7 +136,7 @@ export default function PortfolioPage() {
     ctx.fillText("for successfully completing the assessment for", W/2, 778);
     ctx.fillStyle = "#1a1f2e"; ctx.font = "bold 38px Georgia"; ctx.fillText(result.sessionName, W/2, 836);
     ctx.fillStyle = "#6b7280"; ctx.font = "26px Arial";
-    ctx.fillText(`Score: ${result.score} / ${result.totalQuestions}  ·  ${result.percentage}%`, W/2, 892);
+    ctx.fillText(`Score: ${result.score} / ${result.totalQuestions}  ï¿½  ${result.percentage}%`, W/2, 892);
 
     ctx.font = "24px Arial"; ctx.fillStyle = "#9ca3af";
     ctx.textAlign = "left"; ctx.fillText("UniSphere Platform", W*0.20, 958);
@@ -178,7 +179,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="portfolio-page">
+    <div className="portfolio-root portfolio-page">
       <Toast toasts={toasts} removeToast={removeToast} />
 
       {/* Navigation Bar */}
@@ -234,9 +235,6 @@ export default function PortfolioPage() {
           </div>
           <div className="student-selector-right">
             <div className="form-label" style={{ marginBottom: 4 }}>Student ID: {CURRENT_STUDENT_ID}</div>
-            <div style={{ fontSize: 12, color: "var(--gray-500)" }}>
-              Change CURRENT_STUDENT_ID in page.jsx to view different student
-            </div>
           </div>
         </div>
 
@@ -305,11 +303,11 @@ export default function PortfolioPage() {
               </div>
             )}
 
-            {/* My Course Achievements — inside the same card, below badges */}
+            {/* My Course Achievements ï¿½ inside the same card, below badges */}
             <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid #f3f4f6" }}>
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gray-900)" }}>My Course Achievements</div>
-                <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 2 }}>Sessions you passed — click to download certificate</div>
+                <div style={{ fontSize: 12, color: "var(--gray-500)", marginTop: 2 }}>Sessions you passed ï¿½ click to download certificate</div>
               </div>
               {quizResults.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "20px 0", color: "var(--gray-400)" }}>
@@ -335,7 +333,7 @@ export default function PortfolioPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gray-900)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{result.sessionName}</div>
-                        <div style={{ fontSize: 11, color: "#667eea", fontWeight: 600 }}>{result.score}/{result.totalQuestions} · {result.percentage}%</div>
+                        <div style={{ fontSize: 11, color: "#667eea", fontWeight: 600 }}>{result.score}/{result.totalQuestions} ï¿½ {result.percentage}%</div>
                       </div>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2.5" style={{ flexShrink: 0 }}>
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
@@ -373,7 +371,7 @@ export default function PortfolioPage() {
       </main>
 
       <footer style={{ position: "fixed", bottom: 0, left: 0, right: 0, borderTop: "1px solid #e5e7eb", padding: "16px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fff", zIndex: 100 }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--gray-500)" }}>© 2026 UniSphere. All rights reserved.</p>
+        <p style={{ margin: 0, fontSize: 13, color: "var(--gray-500)" }}>ï¿½ 2026 UniSphere. All rights reserved.</p>
         <p style={{ margin: 0, fontSize: 13, color: "var(--gray-500)" }}>v1.0.0</p>
       </footer>
       <Toast toasts={toasts} removeToast={removeToast} />

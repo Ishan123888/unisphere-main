@@ -344,11 +344,17 @@ export default function LoginPage() {
               </p>
             </form>
 
-            <div className="mt-7 pt-6 border-t border-white/[0.06] text-center">
+            <div className="mt-7 pt-6 border-t border-white/[0.06] text-center space-y-3">
               <p className="text-sm font-bold text-slate-500">
                 Don't have an account?{' '}
                 <Link href="/register" className="text-violet-400 hover:text-violet-300 font-black transition-colors">
                   Register as a Member
+                </Link>
+              </p>
+              <p className="text-xs font-bold text-slate-600">
+                Are you an admin?{' '}
+                <Link href="/admin-login" className="text-amber-400 hover:text-amber-300 font-black transition-colors">
+                  Login here →
                 </Link>
               </p>
             </div>

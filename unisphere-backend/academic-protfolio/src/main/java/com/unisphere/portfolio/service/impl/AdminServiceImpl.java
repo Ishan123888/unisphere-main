@@ -152,6 +152,10 @@ public class AdminServiceImpl implements AdminService {
         if (adminRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
+        if (request.getEmail() != null && !request.getEmail().isEmpty()
+                && adminRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
 
         Admin admin = new Admin();
         admin.setUsername(request.getUsername());

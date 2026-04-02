@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import "../../src/app/portfolio.css";
 import { useEffect, useState } from "react";
 import { createAchievement, updateAchievement } from "../../lib/api";
 

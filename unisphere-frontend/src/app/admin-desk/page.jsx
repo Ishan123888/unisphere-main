@@ -1,5 +1,6 @@
 "use client";
 
+import "../portfolio.css";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminDashboard from "../../../components/AdminDashboard";
@@ -692,7 +693,7 @@ export default function AdminDeskPage() {
   };
 
   return (
-    <div className={`admin-desk-layout ${!sidebarOpen ? "sidebar-closed" : ""}`}>
+    <div className={`portfolio-root admin-desk-layout ${!sidebarOpen ? "sidebar-closed" : ""}`}>
       <Toast toasts={toasts} removeToast={removeToast} />
 
       {/* Sidebar Overlay for Mobile */}
@@ -1516,13 +1517,6 @@ export default function AdminDeskPage() {
                             disabled={sessionsLoading}
                           >
                             {editingSessionId === session.id ? "Cancel" : "Edit"}
-                          </button>
-                          <button
-                            className="delete-btn"
-                            onClick={() => handleDeleteSession(session.id)}
-                            disabled={sessionsLoading}
-                          >
-                            Delete
                           </button>
                         </div>
                       </div>
