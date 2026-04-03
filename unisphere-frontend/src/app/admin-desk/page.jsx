@@ -104,6 +104,7 @@ export default function AdminDeskPage() {
     questionText: "", optionA: "", optionB: "", optionC: "", optionD: "", correctAnswer: "A"
   });
   const [questionSaving, setQuestionSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isAdminLoggedIn");
@@ -127,6 +128,7 @@ export default function AdminDeskPage() {
     setAdminId(id);
     setEditForm({ fullName, username: username, email, phoneNumber, profilePictureUrl, department, designation, bio });
     setProfileImagePreview(profilePictureUrl);
+    setMounted(true);
   }, [router]);
 
   // Scroll to top when activeView changes
@@ -691,6 +693,32 @@ export default function AdminDeskPage() {
       toast.error("Error", error.message || "Failed to delete question");
     }
   };
+
+  if (!mounted) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 16,
+      }}>
+        <div style={{
+          width: 48, height: 48,
+          border: "4px solid rgba(255,255,255,0.3)",
+          borderTopColor: "#fff",
+          borderRadius: "50%",
+          animation: "spin 0.7s linear infinite",
+        }} />
+        <p style={{ color: "white", fontWeight: 700, fontSize: 15, fontFamily: "Inter, sans-serif" }}>
+          Loading Admin Panel...
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   return (
     <div className={`portfolio-root admin-desk-layout ${!sidebarOpen ? "sidebar-closed" : ""}`}>

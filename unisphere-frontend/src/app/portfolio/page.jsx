@@ -9,9 +9,6 @@ import Toast from "../../../components/Toast";
 import { useToast } from "../../../hooks/useToast";
 import { getAchievementsByStudent, getStudentBadges, getStudents } from "../../../lib/api";
 
-// HARDCODED STUDENT ID FOR SESSION - Change this to switch students
-const CURRENT_STUDENT_ID = 1;
-
 function getInitials(name) {
   if (!name) return "?";
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -21,29 +18,35 @@ export default function PortfolioPage() {
   const router = useRouter();
   const { toasts, removeToast, toast } = useToast();
 
+  const [studentId, setStudentId] = useState(null);
   const [currentStudent, setCurrentStudent] = useState(null);
   const [achievements, setAchievements] = useState([]);
   const [badges, setBadges] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [studentName, setStudentName] = useState("Student");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
-    // Store student ID in session storage
-    sessionStorage.setItem("currentStudentId", CURRENT_STUDENT_ID);
+    const id = parseInt(sessionStorage.getItem("currentStudentId") || "0");
     const name = sessionStorage.getItem("studentName");
-    if (name) {
-      setStudentName(name);
+    if (!id) {
+      router.push("/login");
+      return;
     }
-    loadStudentData();
+    setStudentId(id);
+    if (name) setStudentName(name);
+    setMounted(true);
+    loadStudentData(id);
   }, []);
 
-  const loadStudentData = async () => {
+  const loadStudentData = async (id) => {
+    const currentId = id || studentId;
     try {
       setLoading(true);
       const students = await getStudents();
-      const student = students.find((s) => s.id === CURRENT_STUDENT_ID);
+      const student = students.find((s) => s.id === currentId);
       
       if (!student) {
         toast.error("Error", "Student not found");
@@ -55,8 +58,8 @@ export default function PortfolioPage() {
       sessionStorage.setItem("studentName", student.fullName || "");
       
       const [achievementData, badgeData] = await Promise.all([
-        getAchievementsByStudent(CURRENT_STUDENT_ID),
-        getStudentBadges(CURRENT_STUDENT_ID),
+        getAchievementsByStudent(currentId),
+        getStudentBadges(currentId),
       ]);
       setAchievements(achievementData || []);
       setBadges(badgeData || []);
@@ -64,7 +67,7 @@ export default function PortfolioPage() {
       // Load quiz results
       try {
         const { getStudentQuizResults } = await import("../../../lib/api");
-        const results = await getStudentQuizResults(CURRENT_STUDENT_ID);
+        const results = await getStudentQuizResults(currentId);
         setQuizResults(Array.isArray(results) ? results.filter(r => r.passed) : []);
       } catch (e) { setQuizResults([]); }
     } catch (error) {
@@ -178,6 +181,32 @@ export default function PortfolioPage() {
     link.click();
   };
 
+  if (!mounted) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 16,
+      }}>
+        <div style={{
+          width: 48, height: 48,
+          border: "4px solid rgba(255,255,255,0.3)",
+          borderTopColor: "#fff",
+          borderRadius: "50%",
+          animation: "spin 0.7s linear infinite",
+        }} />
+        <p style={{ color: "white", fontWeight: 700, fontSize: 15, fontFamily: "Inter, sans-serif" }}>
+          Loading Portfolio...
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div className="portfolio-root portfolio-page">
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -200,6 +229,12 @@ export default function PortfolioPage() {
               onClick={() => router.push("/student-sessions")}
             >
               Training Sessions
+            </button>
+            <button
+              className="navbar-link"
+              onClick={() => router.push("/tutor-booking/student-dashboard")}
+            >
+              Dashboard
             </button>
           </div>
           <div className="navbar-user">
@@ -234,7 +269,7 @@ export default function PortfolioPage() {
             </div>
           </div>
           <div className="student-selector-right">
-            <div className="form-label" style={{ marginBottom: 4 }}>Student ID: {CURRENT_STUDENT_ID}</div>
+            <div className="form-label" style={{ marginBottom: 4 }}>Student ID: {studentId}</div>
           </div>
         </div>
 
@@ -249,9 +284,9 @@ export default function PortfolioPage() {
                 Fill in the details and submit for admin review
               </div>
             </div>
-            {CURRENT_STUDENT_ID && (
+            {studentId && (
               <AchievementForm
-                studentId={CURRENT_STUDENT_ID}
+                studentId={studentId}
                 onSuccess={loadStudentData}
                 toast={toast}
               />
@@ -361,7 +396,7 @@ export default function PortfolioPage() {
           ) : (
             <AchievementList
               achievements={achievements}
-              studentId={CURRENT_STUDENT_ID}
+              studentId={studentId}
               onRefresh={loadStudentData}
               toast={toast}
             />

@@ -330,3 +330,8 @@ export async function getStudentQuizResults(studentId) {
   const response = await fetch(`${BASE_URL}/session-questions/student/${studentId}/results`);
   return handleResponse(response);
 }
+
+export async function resolveStudentByEmail(email) {
+  const response = await fetch(`${BASE_URL}/auth/student/resolve?email=${encodeURIComponent(email)}`);
+  return handleResponse(response);
+}

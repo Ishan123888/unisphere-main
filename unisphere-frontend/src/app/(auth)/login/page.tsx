@@ -126,6 +126,25 @@ export default function LoginPage() {
         localStorage.setItem('userRole', role || 'STUDENT');
         localStorage.setItem('username', formData.username.trim());
         const userRole = (role || 'STUDENT').toUpperCase();
+
+        // After successful login, if STUDENT — resolve portfolio studentId by username
+        if (userRole === 'STUDENT') {
+          try {
+            const res = await fetch(
+              `http://localhost:8084/api/auth/student/resolve?username=${encodeURIComponent(formData.username.trim())}&password=${encodeURIComponent(formData.password)}`
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (data.studentId) {
+                sessionStorage.setItem('currentStudentId', String(data.studentId));
+                sessionStorage.setItem('studentName', data.fullName || '');
+              }
+            }
+          } catch (_) {
+            // non-blocking — portfolio lookup failure doesn't break login
+          }
+        }
+
         switch (userRole) {
           case 'TUTOR': router.push('/tutor-booking/tutor-dashboard');  break;
           case 'ADMIN': router.push('/tutor-booking/admin-dashboard');  break;
@@ -135,6 +154,25 @@ export default function LoginPage() {
         throw new Error('Token not received from server');
       }
     } catch (error: any) {
+      // ── Identity-service failed — try portfolio student table as fallback ──
+      try {
+        const res = await fetch(
+          `http://localhost:8084/api/auth/student/resolve?username=${encodeURIComponent(formData.username.trim())}&password=${encodeURIComponent(formData.password)}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.studentId) {
+            // Portfolio login success — go to student dashboard (same as identity-service students)
+            sessionStorage.setItem('currentStudentId', String(data.studentId));
+            sessionStorage.setItem('studentName', data.fullName || '');
+            router.push('/tutor-booking/student-dashboard');
+            return;
+          }
+        }
+      } catch (_) {
+        // portfolio also failed — fall through to show error
+      }
+
       const msg = error.response?.data?.message || error.response?.data || error.message;
       setLoginErr(
         msg === 'Forbidden'

@@ -674,6 +674,12 @@ export default function StudentSessionsPage() {
             >
               Training Sessions
             </button>
+            <button
+              className="navbar-link"
+              onClick={() => router.push("/tutor-booking/student-dashboard")}
+            >
+              Dashboard
+            </button>
           </div>
           <div className="navbar-user">
             <span className="user-name">{studentName}</span>
