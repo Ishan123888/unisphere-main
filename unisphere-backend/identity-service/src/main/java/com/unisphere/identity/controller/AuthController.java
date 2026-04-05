@@ -25,29 +25,19 @@ public class AuthController {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    // ✅ Fix: ResponseEntity<?> නිසා error message හරියට frontend එකට යනවා
     @PostMapping("/register")
     public ResponseEntity<?> addNewUser(@RequestBody UserCredential user) {
         try {
-            // Debug log — IntelliJ console එකේ role එක confirm කරගන්න
-            System.out.println(">>> REGISTER REQUEST | Username: "
-                    + user.getUsername()
-                    + " | Role: " + user.getRole()
-                    + " | Email: " + user.getEmail());
-
+            System.out.println(">>> REGISTER REQUEST | Username: " + user.getUsername());
             String result = service.saveUser(user);
             return ResponseEntity.ok(Map.of("message", result));
-
         } catch (Exception e) {
-            System.err.println(">>> REGISTER ERROR: " + e.getMessage());
-            // ✅ Frontend එකේ error.response.data.message හරියට catch වෙනවා
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", e.getMessage()));
         }
     }
 
-    // ✅ Fix: Login error ද හරියට handle කිරීම
     @PostMapping("/login")
     public ResponseEntity<?> getToken(@RequestBody UserCredential user) {
         try {
@@ -58,8 +48,9 @@ public class AuthController {
             );
 
             if (authenticate.isAuthenticated()) {
+                // මෙතනදී දැන් ID එකත් සහිතව response එක ලැබෙනවා ✅
                 AuthResponse response = service.generateToken(user.getUsername());
-                System.out.println(">>> LOGIN SUCCESS | Role: " + response.getRole());
+                System.out.println(">>> LOGIN SUCCESS | ID: " + response.getId() + " | Role: " + response.getRole());
                 return ResponseEntity.ok(response);
             } else {
                 return ResponseEntity
@@ -68,12 +59,10 @@ public class AuthController {
             }
 
         } catch (BadCredentialsException e) {
-            System.err.println(">>> LOGIN FAILED: Bad credentials for " + user.getUsername());
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Username හෝ Password වැරදියි!"));
         } catch (Exception e) {
-            System.err.println(">>> LOGIN ERROR: " + e.getMessage());
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", e.getMessage()));
@@ -92,5 +81,3 @@ public class AuthController {
         }
     }
 }
-
-

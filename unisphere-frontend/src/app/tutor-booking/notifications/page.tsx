@@ -1,129 +1,223 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, type: 'success', title: 'Booking Confirmed!', message: 'Amal Perera confirmed your session on Mon 10:00 AM.', time: '2 mins ago', read: false },
-  { id: 2, type: 'info', title: 'Session Reminder', message: 'Your session with Dilki Jayawardena starts in 1 hour. Check your email for the Google Meet link.', time: '1 hour ago', read: false },
-  { id: 3, type: 'warning', title: 'Payment Due', message: 'Payment of Rs. 1,260 is pending for your session with Dilki Jayawardena.', time: '3 hours ago', read: false },
-  { id: 4, type: 'success', title: 'Session Completed', message: 'Your session with Tharaka Silva has been marked as completed. Please leave a review!', time: 'Yesterday', read: true },
-  { id: 5, type: 'info', title: 'New Tutor Available', message: 'Sanduni Wickrama is now available for Mathematics sessions. Check their profile!', time: 'Yesterday', read: true },
-  { id: 6, type: 'error', title: 'Booking Cancelled', message: 'Your booking with Nethmi Rodrigo (UNI-004) has been cancelled as requested.', time: '2 days ago', read: true },
-];
+const NOTIF_API = 'http://localhost:8081/api/v1/notifications';
 
-const TYPE_STYLES: Record<string, { bg: string; border: string; icon: string; dot: string }> = {
-  success: { bg: 'bg-green-50', border: 'border-green-100', icon: '✅', dot: 'bg-green-500' },
-  info: { bg: 'bg-indigo-50', border: 'border-indigo-100', icon: '📢', dot: 'bg-indigo-500' },
-  warning: { bg: 'bg-yellow-50', border: 'border-yellow-100', icon: '⚠️', dot: 'bg-yellow-500' },
-  error: { bg: 'bg-red-50', border: 'border-red-100', icon: '❌', dot: 'bg-red-400' },
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  createdAt: string;
+  read: boolean;
+}
+
+const TYPE_CONFIG: Record<string, { icon: string; bg: string; border: string; badge: string }> = {
+  SUCCESS: { icon: '✅', bg: 'bg-emerald-50', border: 'border-emerald-100', badge: 'bg-emerald-100 text-emerald-700' },
+  WARNING: { icon: '⚠️', bg: 'bg-amber-50',   border: 'border-amber-100',   badge: 'bg-amber-100 text-amber-700'   },
+  ERROR:   { icon: '❌', bg: 'bg-rose-50',     border: 'border-rose-100',    badge: 'bg-rose-100 text-rose-600'     },
+  INFO:    { icon: '📢', bg: 'bg-indigo-50',   border: 'border-indigo-100',  badge: 'bg-indigo-100 text-indigo-700' },
 };
 
 export default function NotificationsPage() {
-  const router = useRouter();
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
-  const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('ALL');
+  const [markingAll, setMarkingAll] = useState(false);
+
+  const username =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('username') || 'it24100001'
+      : 'it24100001';
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [username]);
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get(`${NOTIF_API}/${username}`);
+      setNotifications(res.data);
+    } catch {
+      setError('Cannot load notifications. Ensure booking service is running on port 8081.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markRead = async (id: number) => {
+    try {
+      await axios.put(`${NOTIF_API}/${id}/read`);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch {
+      // silently fail
+    }
+  };
+
+  const markAllRead = async () => {
+    setMarkingAll(true);
+    const unread = notifications.filter(n => !n.read);
+    await Promise.allSettled(unread.map(n => axios.put(`${NOTIF_API}/${n.id}/read`)));
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setMarkingAll(false);
+  };
+
+  const filtered = filter === 'ALL'
+    ? notifications
+    : filter === 'UNREAD'
+    ? notifications.filter(n => !n.read)
+    : notifications.filter(n => n.type === filter);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const filtered = filter === 'UNREAD' ? notifications.filter(n => !n.read) : notifications;
 
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  const markRead = (id: number) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  const deleteNotif = (id: number) => setNotifications(prev => prev.filter(n => n.id !== id));
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
-
+    <div className="max-w-3xl mx-auto py-8 px-4">
       {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-6 py-10">
-        <div className="max-w-2xl mx-auto">
-          <button onClick={() => router.back()} className="text-indigo-200 text-sm font-bold mb-4 block hover:text-white transition-colors">
-            ← Back
-          </button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-black text-white">Notifications</h1>
-              <p className="text-indigo-200 font-medium mt-1">
-                {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}
-              </p>
-            </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-white/30 transition-all border border-white/20"
-              >
-                Mark All Read
-              </button>
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">Notifications</h1>
+          <p className="text-slate-400 text-sm font-medium mt-0.5">
+            {loading ? 'Loading...' : `${notifications.length} total · `}
+            {!loading && unreadCount > 0 && (
+              <span className="text-indigo-600 font-black">{unreadCount} unread</span>
             )}
-          </div>
+            {!loading && unreadCount === 0 && (
+              <span className="text-emerald-600 font-black">All caught up!</span>
+            )}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllRead}
+              disabled={markingAll}
+              className="text-xs font-black px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200 hover:bg-indigo-100 transition-all disabled:opacity-60"
+            >
+              {markingAll ? '...' : '✓ Mark All Read'}
+            </button>
+          )}
+          <button
+            onClick={fetchNotifications}
+            className="text-xs font-black px-4 py-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
+          >
+            🔄 Refresh
+          </button>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-6">
-
-        {/* Filter */}
-        <div className="bg-white rounded-2xl p-1.5 flex gap-1 mb-6 shadow-sm border border-slate-100 w-fit">
-          {(['ALL', 'UNREAD'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
-                filter === tab ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700'
-              }`}
-            >
-              {tab} {tab === 'UNREAD' && unreadCount > 0 && `(${unreadCount})`}
-            </button>
-          ))}
+      {/* Error */}
+      {error && (
+        <div className="mb-6 px-4 py-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center gap-3">
+          <span>⚠️</span>
+          <p className="text-rose-600 text-sm font-bold flex-1">{error}</p>
+          <button onClick={fetchNotifications} className="text-xs font-black text-rose-600 underline">Retry</button>
         </div>
+      )}
 
-        {/* Notifications */}
+      {/* Filter Tabs */}
+      <div className="bg-white rounded-2xl p-1.5 flex gap-1 mb-6 shadow-sm border border-slate-100 w-fit overflow-x-auto">
+        {['ALL', 'UNREAD', 'SUCCESS', 'INFO', 'WARNING', 'ERROR'].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setFilter(tab)}
+            className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+              filter === tab ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            {tab}
+            {tab === 'UNREAD' && unreadCount > 0 && (
+              <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filter === tab ? 'bg-white/20' : 'bg-rose-100 text-rose-600'}`}>
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-slate-100">
+          <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="font-black text-slate-600 text-sm">Loading notifications...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-slate-100">
+          <p className="text-4xl mb-4">🎉</p>
+          <p className="font-black text-slate-700">
+            {filter === 'UNREAD' ? 'No unread notifications' : 'No notifications found'}
+          </p>
+          <p className="text-slate-400 text-sm mt-1 font-medium">
+            {filter === 'UNREAD' ? "You're all caught up!" : 'Notifications appear here when bookings are made.'}
+          </p>
+        </div>
+      ) : (
         <div className="space-y-3">
-          {filtered.length === 0 ? (
-            <div className="bg-white rounded-3xl p-16 text-center shadow-sm border border-slate-100">
-              <p className="text-4xl mb-4">🔔</p>
-              <p className="font-black text-slate-700">No notifications</p>
-              <p className="text-slate-400 text-sm font-medium mt-1">You are all caught up!</p>
-            </div>
-          ) : (
-            filtered.map(notif => {
-              const style = TYPE_STYLES[notif.type];
-              return (
-                <div
-                  key={notif.id}
-                  className={`rounded-3xl p-5 border transition-all ${notif.read ? 'bg-white border-slate-100' : `${style.bg} ${style.border}`}`}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="text-2xl flex-shrink-0 mt-0.5">{style.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-black text-slate-900 text-sm">{notif.title}</h3>
-                        {!notif.read && <span className={`w-2 h-2 rounded-full ${style.dot} flex-shrink-0`} />}
+          {filtered.map(notif => {
+            const config = TYPE_CONFIG[notif.type] || TYPE_CONFIG['INFO'];
+            return (
+              <div
+                key={notif.id}
+                className={`p-5 rounded-2xl border transition-all ${
+                  notif.read
+                    ? 'bg-white border-slate-100'
+                    : `${config.bg} ${config.border} shadow-sm`
+                }`}
+              >
+                <div className="flex gap-4">
+                  <span className="text-2xl flex-shrink-0 mt-0.5">{config.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className={`font-black text-sm ${notif.read ? 'text-slate-700' : 'text-slate-900'}`}>
+                          {notif.title}
+                        </h3>
+                        {!notif.read && (
+                          <span className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0" />
+                        )}
+                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${config.badge}`}>
+                          {notif.type}
+                        </span>
                       </div>
-                      <p className="text-slate-500 text-sm font-medium leading-relaxed">{notif.message}</p>
-                      <p className="text-slate-300 text-xs font-bold mt-2">{notif.time}</p>
+                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap flex-shrink-0">
+                        {formatTime(notif.createdAt)}
+                      </span>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      {!notif.read && (
-                        <button
-                          onClick={() => markRead(notif.id)}
-                          className="text-xs font-black text-indigo-500 hover:text-indigo-700 transition-colors"
-                        >
-                          Read
-                        </button>
-                      )}
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">{notif.message}</p>
+                    {!notif.read && (
                       <button
-                        onClick={() => deleteNotif(notif.id)}
-                        className="text-xs font-black text-slate-300 hover:text-red-400 transition-colors"
+                        onClick={() => markRead(notif.id)}
+                        className="mt-3 text-[10px] font-black text-indigo-600 uppercase tracking-wide hover:text-indigo-800 transition-colors"
                       >
-                        ✕
+                        Mark as Read →
                       </button>
-                    </div>
+                    )}
                   </div>
                 </div>
-              );
-            })
-          )}
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      <p className="text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest mt-8">
+        Notifications are synced from the booking service
+      </p>
     </div>
   );
 }

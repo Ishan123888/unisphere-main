@@ -1,16 +1,16 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const TIMES = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
 
 const INITIAL_SLOTS: Record<string, string[]> = {
-  Monday: ['10:00 AM', '2:00 PM'],
+  Monday: [],
   Tuesday: [],
-  Wednesday: ['11:00 AM', '3:00 PM'],
+  Wednesday: [],
   Thursday: [],
-  Friday: ['9:00 AM', '1:00 PM'],
+  Friday: [],
   Saturday: [],
 };
 
@@ -20,6 +20,38 @@ export default function AvailabilityManagerPage() {
   const [saved, setSaved] = useState(false);
   const [sessionDuration, setSessionDuration] = useState('60');
   const [sessionType, setSessionType] = useState('both');
+  const [tutorId, setTutorId] = useState<string | null>(null);
+
+  // ── Component එක Load වෙද්දී පවතින දත්ත Load කරගැනීම ────────────────
+  useEffect(() => {
+    const id = localStorage.getItem('tutorId');
+    if (id) {
+      setTutorId(id);
+      fetchCurrentAvailability(id);
+    }
+  }, []);
+
+  const fetchCurrentAvailability = async (id: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/api/bookings/tutor/${id}/availability`);
+      if (response.ok) {
+        const data = await response.json();
+        const loadedSlots: Record<string, string[]> = { ...INITIAL_SLOTS };
+
+        // FIX: item.dayOfWeek වෙනුවට item.day සහ item.timeSlot වෙනුවට item.time පාවිච්චි කළා
+        data.forEach((item: any) => {
+          if (item.day && loadedSlots[item.day]) {
+            if (!loadedSlots[item.day].includes(item.time)) {
+                loadedSlots[item.day].push(item.time);
+            }
+          }
+        });
+        setSlots(loadedSlots);
+      }
+    } catch (error) {
+      console.error("Error loading availability:", error);
+    }
+  };
 
   const toggleSlot = (day: string, time: string) => {
     setSlots(prev => {
@@ -48,16 +80,53 @@ export default function AvailabilityManagerPage() {
     setSaved(false);
   };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // ── Backend එකට Data Save කිරීමේ Logic එක ──────────────────────
+  const handleSave = async () => {
+    if (!tutorId) {
+      alert("Tutor ID not found. Please login again.");
+      return;
+    }
+
+    // FIX: Backend Entity එකේ තියෙන 'day' සහ 'time' වලට map කළා
+    const availabilityList = Object.entries(slots).flatMap(([dayName, times]) =>
+      times.map(timeValue => ({
+        tutorId: parseInt(tutorId),
+        day: dayName,
+        time: timeValue,
+        active: true
+      }))
+    );
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:8081/api/bookings/tutor/${tutorId}/availability`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(availabilityList)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+        fetchCurrentAvailability(tutorId); // Save වුණාට පස්සේ ආපහු sync කරගන්න
+      } else {
+        alert("Failed to save: " + (data.message || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("Unexpected error occurred. Check if the Backend is running on Port 8081.");
+    }
   };
 
   const totalSlots = Object.values(slots).reduce((s, v) => s + v.length, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-
       <button
         onClick={handleDemoFill}
         className="fixed bottom-8 right-8 z-50 bg-purple-600 text-white px-5 py-3 rounded-full shadow-2xl text-xs font-black uppercase tracking-widest hover:bg-purple-700 transition-all hover:scale-105"
@@ -65,7 +134,6 @@ export default function AvailabilityManagerPage() {
         Demo Fill
       </button>
 
-      {/* Header */}
       <div className="bg-gradient-to-br from-purple-600 to-indigo-700 px-6 py-10">
         <div className="max-w-4xl mx-auto">
           <button onClick={() => router.back()} className="text-purple-200 text-sm font-bold mb-4 block hover:text-white">← Back</button>
@@ -79,8 +147,6 @@ export default function AvailabilityManagerPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-
-        {/* Settings */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
           <h2 className="font-black text-slate-900 mb-4">Session Settings</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,7 +177,6 @@ export default function AvailabilityManagerPage() {
           </div>
         </div>
 
-        {/* Calendar Grid */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
           <h2 className="font-black text-slate-900 mb-2">Weekly Schedule</h2>
           <p className="text-slate-400 text-sm font-medium mb-6">Click on a time slot to mark yourself as available.</p>
@@ -156,7 +221,6 @@ export default function AvailabilityManagerPage() {
           </div>
         </div>
 
-        {/* Save Button */}
         <button
           onClick={handleSave}
           className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 ${

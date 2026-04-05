@@ -21,20 +21,16 @@ public class AuthService {
     private JwtService jwtService;
 
     public String saveUser(UserCredential credential) {
-
-        // ── Username — keep as SLIIT ID (it24100001), never override with email ──
-        if (credential.getUsername() == null || credential.getUsername().isBlank()) {
-            throw new RuntimeException("Username is required!");
+        if (credential.getPassword() == null || credential.getPassword().isBlank()) {
+            throw new RuntimeException("Password is required for registration!");
         }
-        // Normalize to lowercase
+
         credential.setUsername(credential.getUsername().trim().toLowerCase());
 
-        // ── Duplicate username check ──────────────────────────────
         if (repository.findByUsername(credential.getUsername()).isPresent()) {
             throw new RuntimeException("Username '" + credential.getUsername() + "' is already registered!");
         }
 
-        // ── Role validation ───────────────────────────────────────
         if (credential.getRole() == null || credential.getRole().isBlank()) {
             credential.setRole("STUDENT");
         }
@@ -44,34 +40,25 @@ public class AuthService {
         }
         credential.setRole(role);
 
-        // ── Status: TUTOR → PENDING_REVIEW, STUDENT → ACTIVE ─────
         if (credential.getStatus() == null || credential.getStatus().isBlank()) {
             credential.setStatus(role.equals("TUTOR") ? "PENDING_REVIEW" : "ACTIVE");
         }
 
-        // ── subjects[] → comma-separated String ──────────────────
         if (credential.getSubjectsRaw() != null && !credential.getSubjectsRaw().isEmpty()) {
             credential.setSubjects(String.join(",", credential.getSubjectsRaw()));
             credential.setSubject(credential.getSubjectsRaw().get(0));
         }
 
-        // ── tags[] → comma-separated String ──────────────────────
         if (credential.getTagsRaw() != null && !credential.getTagsRaw().isEmpty()) {
             credential.setTags(String.join(",", credential.getTagsRaw()));
         }
 
-        // ── preferredSubjects[] → comma-separated String ─────────
         if (credential.getPreferredSubjectsRaw() != null && !credential.getPreferredSubjectsRaw().isEmpty()) {
             credential.setPreferredSubjects(String.join(",", credential.getPreferredSubjectsRaw()));
         }
 
-        // ── Encode password ───────────────────────────────────────
         credential.setPassword(passwordEncoder.encode(credential.getPassword()));
-
         repository.save(credential);
-
-        System.out.println(">>> REGISTER SUCCESS | Username: " + credential.getUsername()
-                + " | Role: " + role + " | Status: " + credential.getStatus());
 
         return role.equals("TUTOR")
                 ? "Tutor profile submitted for review!"
@@ -82,10 +69,8 @@ public class AuthService {
         UserCredential user = repository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
 
-        // Block PENDING_REVIEW tutors from logging in
-        if ("PENDING_REVIEW".equals(user.getStatus())) {
-            throw new RuntimeException(
-                    "Your tutor account is still under review. Please wait for admin approval.");
+        if ("PENDING_REVIEW".equalsIgnoreCase(user.getStatus())) {
+            throw new RuntimeException("Your tutor account is still under review.");
         }
 
         String token = jwtService.generateToken(username, user.getRole());
@@ -93,6 +78,7 @@ public class AuthService {
         return AuthResponse.builder()
                 .token(token)
                 .role(user.getRole())
+                .id(user.getId()) // ✅ දැන් int නිසා error එක එන්නේ නැහැ
                 .build();
     }
 

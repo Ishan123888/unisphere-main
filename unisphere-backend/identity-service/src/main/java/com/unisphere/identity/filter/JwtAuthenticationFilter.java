@@ -25,11 +25,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    // ✅ /auth/** paths වලදී JWT filter සම්පූර්ණයෙන් skip කිරීම
+    // ✅ මෙතන තමයි වෙනස් කළේ - /auth/ සහ /api/users/register යන දෙකම skip කරනවා
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        return path.startsWith("/auth/");
+        return path.startsWith("/auth/") || path.startsWith("/api/users/register");
     }
 
     @Override
@@ -42,18 +42,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = null;
         String username = null;
 
-        // Authorization header එකෙන් token එක extract කිරීම
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
             try {
                 username = jwtService.extractUsername(token);
             } catch (Exception e) {
-                // ✅ Invalid token නම් quietly skip — exception throw නොකිරීම
                 System.err.println(">>> JWT Extract Error: " + e.getMessage());
             }
         }
 
-        // ✅ Username extract වුනා සහ Security Context එකේ auth නැත්නම් validate කිරීම
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -71,7 +68,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     System.out.println(">>> JWT Auth Success: " + username);
                 }
             } catch (Exception e) {
-                // ✅ User not found හෝ invalid token නම් quietly skip
                 System.err.println(">>> JWT Validation Error: " + e.getMessage());
             }
         }

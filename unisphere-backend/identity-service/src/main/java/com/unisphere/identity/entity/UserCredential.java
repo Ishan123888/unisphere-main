@@ -11,68 +11,56 @@ import java.util.List;
 @NoArgsConstructor
 public class UserCredential {
 
-    // ── Primary key ──────────────────────────────────────────────
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private int id; // 👈 මේ int එකට තමයි අපි AuthResponse එක හැදුවේ
 
-    // ── Auth fields ──────────────────────────────────────────────
-    private String username;            // email used as username
+    private String username;
     private String email;
-    private String password;            // BCrypt encoded in AuthService
+    private String password;
 
     @Column(nullable = false)
-    private String role;                // "TUTOR" | "STUDENT" | "ADMIN"
+    private String role;
 
     @Column(nullable = false)
-    private String status = "ACTIVE";   // TUTOR → "PENDING_REVIEW" | STUDENT → "ACTIVE"
+    private String status = "ACTIVE";
 
-    // ── Common profile ───────────────────────────────────────────
     private String firstName;
     private String lastName;
     private String phone;
     private String university;
-
-    // ── Tutor-specific ───────────────────────────────────────────
-    private String qualification;       // "BSc Computer Science (Hons)"
-    private String yearOfStudy;         // "4TH_YEAR" → card badge "4th Year"
-    private String experience;          // "3_TO_5" → AI match score weight
-
-    private String subject;             // Primary subject on card (auto-set to subjects[0])
+    private String qualification;
+    private String yearOfStudy;
+    private String experience;
+    private String subject;
 
     @Column(columnDefinition = "TEXT")
-    private String subjects;            // Stored as "React,DSA,OOP" — split on read
+    private String subjects;
 
     @Column(columnDefinition = "TEXT")
-    private String tags;                // Skill pills on card — "React,Node.js,MySQL"
+    private String tags;
 
-    private String bio;                 // Card bio text
-    private Double hourlyRate;          // "Per Hour Rs. X" on card
-    private String sessionType;         // "ONLINE" | "PHYSICAL" | "BOTH"
-    private String avatar;              // Emoji or Cloudinary URL
+    private String bio;
+    private Double hourlyRate;
+    private String sessionType;
+    private String avatar;
 
-    // Updated by booking-service over time
-    private Integer sessions  = 0;      // "487 sessions" on card
-    private Double  rating    = 0.0;    // Star rating
-    private Integer reviews   = 0;      // "(210 reviews)"
-    private Boolean available = true;   // Green/red dot
+    private Integer sessions  = 0;
+    private Double  rating    = 0.0;
+    private Integer reviews   = 0;
+    private Boolean available = true;
 
-    // ── Student-specific ─────────────────────────────────────────
-    private String level;               // "UG_Y4" | "AL"
+    private String level;
 
     @Column(columnDefinition = "TEXT")
-    private String preferredSubjects;   // "Mathematics,Physics" — find matching tutors
-
-    // ── Transient fields (JSON in, not persisted) ─────────────────
-    // Frontend sends subjects/tags/preferredSubjects as String arrays.
-    // AuthService reads these, joins to comma-string, sets the @Column fields above.
+    private String preferredSubjects;
 
     @Transient
-    private List<String> subjectsRaw;           // ["Web Technologies","Computer Science"]
+    private List<String> subjectsRaw;
 
     @Transient
-    private List<String> tagsRaw;               // ["React","Node.js","Spring Boot"]
+    private List<String> tagsRaw;
 
     @Transient
-    private List<String> preferredSubjectsRaw;  // ["Mathematics","Physics"]
+    private List<String> preferredSubjectsRaw;
 }

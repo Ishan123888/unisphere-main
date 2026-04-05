@@ -72,23 +72,36 @@ export default function ApproveTutorsPage() {
     }
   };
 
-  // ── Approve / Reject ────────────────────────────────────────
-  const handleAction = async (id: number, action: 'approve' | 'reject') => {
-    setActing(id);
-    try {
-      const res = await fetch(`${API}/tutors/${id}/${action}`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token()}` },
-      });
-      if (!res.ok) throw new Error('Action failed');
-      const updated: Tutor = await res.json();
-      setTutors(prev => prev.map(t => t.id === id ? updated : t));
-    } catch {
-      setError('Action failed. Please try again.');
-    } finally {
-      setActing(null);
-    }
-  };
+ const handleAction = async (id: number, action: 'approve' | 'reject') => {
+   setActing(id);
+   const currentToken = localStorage.getItem('token'); // Token එක මෙතනදී ගන්න
+
+   try {
+     const res = await fetch(`${API}/tutors/${id}/${action}`, {
+       method: 'PUT',
+       headers: {
+         'Authorization': `Bearer ${currentToken}`,
+         'Content-Type': 'application/json'
+       },
+     });
+
+     if (!res.ok) {
+       const errorData = await res.json();
+       throw new Error(errorData.message || 'Action failed');
+     }
+
+     // Database එකේ status එක update වුණාම UI එකත් update කරනවා
+     const newStatus = action === 'approve' ? 'ACTIVE' : 'REJECTED';
+     setTutors(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+
+     alert(`Success: Tutor is now ${newStatus}!`);
+
+   } catch (err: any) {
+     setError(err.message || 'Could not update status.');
+   } finally {
+     setActing(null);
+   }
+ };
 
   const filtered = filter === 'ALL'
     ? tutors

@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
     private String token;
     private String role;
+    private int id; // ✅ Entity එකේ හැටියට int ලෙස වෙනස් කළා
 }

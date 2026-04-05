@@ -10,11 +10,15 @@
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
+    "@stomp/stompjs": "^7.3.0",
     "axios": "^1.13.6",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "next": "16.1.6",
     "postcss": "^8.5.8",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "sockjs-client": "^1.6.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",

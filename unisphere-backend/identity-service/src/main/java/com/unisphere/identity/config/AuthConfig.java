@@ -45,7 +45,8 @@ public class AuthConfig {
                                 "/auth/register",
                                 "/auth/login",
                                 "/auth/validate",
-                                "/api/users/**"       // tutor list, approve, reject
+                                "/api/users/register", // ✅ මෙතන අලුතින් එක් කළා
+                                "/api/users/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()

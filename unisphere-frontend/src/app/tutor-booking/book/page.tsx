@@ -1,14 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-
-const TUTORS: Record<number, any> = {
-  1: { id: 1, name: 'Amal Perera',      subject: 'Data Structures & Algorithms', avatar: 'AP', hourlyRate: 1500 },
-  2: { id: 2, name: 'Dilki Jayawardena', subject: 'Database Management Systems',  avatar: 'DJ', hourlyRate: 1200 },
-  3: { id: 3, name: 'Kasun Madushanka', subject: 'Software Engineering',           avatar: 'KM', hourlyRate: 1800 },
-  4: { id: 4, name: 'Nethmi Rodrigo',   subject: 'Computer Networks',              avatar: 'NR', hourlyRate: 1100 },
-  5: { id: 5, name: 'Tharaka Silva',    subject: 'Web Technologies',               avatar: 'TS', hourlyRate: 2000 },
-};
 
 interface FormData {
   studentName: string;
@@ -20,6 +12,7 @@ interface FormData {
   topic: string;
   notes: string;
   paymentMethod: string;
+  agreeTerms: boolean;
 }
 
 interface Errors {
@@ -31,536 +24,568 @@ interface Errors {
   sessionType?: string;
   topic?: string;
   paymentMethod?: string;
-  terms?: string;
+  agreeTerms?: string;
 }
 
-type Field = keyof Omit<Errors, 'terms'>;
-
-/* ── Validation rules ─────────────────────────────────────────────── */
-const SL_PHONE_PREFIXES = ['070','071','072','074','075','076','077','078'];
-
-const validateField = (field: Field, value: string, formData: FormData): string | undefined => {
+const validate = (field: string, value: string | boolean, form: FormData): string | undefined => {
   switch (field) {
-
     case 'studentName':
-      if (!value.trim())                       return 'Full name is required.';
-      if (value.trim().length < 3)             return 'Name must be at least 3 characters.';
-      if (!/^[a-zA-Z\s.'-]+$/.test(value.trim())) return 'Name can only contain letters and spaces.';
+      if (!String(value).trim()) return 'Full name is required';
+      if (String(value).trim().length < 3) return 'At least 3 characters';
+      if (!/^[A-Za-z\s]+$/.test(String(value))) return 'Letters only';
       break;
-
     case 'studentId':
-      if (!value.trim()) return 'Student ID is required.';
-      if (!/^[a-zA-Z]{2}\d{8}$/.test(value.trim()))
-        return 'Must be 2 letters + 8 digits  (e.g. IT22156700)';
+      if (!String(value).trim()) return 'Student ID is required';
+      if (!/^[a-zA-Z]{2}\d{8}$/.test(String(value).trim()))
+        return '2 letters + 8 digits (e.g. IT22100001)';
       break;
-
     case 'email':
-      if (!value.trim()) return 'SLIIT email is required.';
-      if (!/^[a-zA-Z]{2}\d{8}@my\.sliit\.lk$/.test(value.trim()))
-        return 'Use your SLIIT email  (e.g. it22156700@my.sliit.lk)';
-      // Email prefix must match Student ID prefix
-      if (formData.studentId && /^[a-zA-Z]{2}\d{8}$/.test(formData.studentId.trim())) {
-        const idPrefix = formData.studentId.trim().toLowerCase();
-        const emailPrefix = value.trim().toLowerCase().split('@')[0];
-        if (idPrefix !== emailPrefix)
-          return 'Email must match your Student ID  (e.g. it22156700@my.sliit.lk)';
-      }
+      if (!String(value).trim()) return 'Email is required';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) return 'Invalid email address';
       break;
-
     case 'phone':
-      if (!value.trim()) return 'Phone number is required.';
-      if (!/^\d{10}$/.test(value.trim())) return 'Enter a valid 10-digit Sri Lankan phone number.';
-      if (!SL_PHONE_PREFIXES.some(p => value.trim().startsWith(p)))
-        return `Must start with a valid prefix: ${SL_PHONE_PREFIXES.join(', ')}`;
+      if (String(value).trim() && !/^[\d\s\+\-]{9,15}$/.test(String(value)))
+        return 'Invalid phone number';
       break;
-
     case 'duration':
-      if (!value) return 'Please select a session duration.';
+      if (!value) return 'Please select duration';
       break;
-
     case 'sessionType':
-      if (!value) return 'Please select a session type.';
+      if (!value) return 'Please select session type';
       break;
-
     case 'topic':
-      if (!value.trim())                return 'Please describe what you need help with.';
-      if (value.trim().length < 10)     return `Too short — ${10 - value.trim().length} more characters needed.`;
-      if (value.trim().length > 500)    return 'Topic must be under 500 characters.';
+      if (!String(value).trim()) return 'Please describe what you need help with';
+      if (String(value).trim().length < 10) return 'At least 10 characters';
       break;
-
-    case 'paymentMethod':
-      if (!value) return 'Please select a payment method.';
+    case 'agreeTerms':
+      if (!value) return 'You must agree to the terms';
       break;
   }
 };
 
-export default function BookingFormPage() {
-  const router      = useRouter();
+const validateAll = (form: FormData): Errors => {
+  const e: Errors = {};
+  const fields: (keyof Errors)[] = ['studentName','studentId','email','duration','sessionType','topic','agreeTerms'];
+  fields.forEach(f => {
+    const msg = validate(f, form[f as keyof FormData] as string | boolean, form);
+    if (msg) (e as any)[f] = msg;
+  });
+  return e;
+};
+
+function BookingFormContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
-  const tutorId = Number(searchParams?.get('tutorId')) || 1;
-  const slot    = searchParams?.get('slot') || 'Mon 10:00 AM';
-  const tutor   = TUTORS[tutorId] || TUTORS[1];
+  const tutorId    = searchParams.get('tutorId')    || '';
+  const tutorName  = searchParams.get('tutorName')  || 'Expert Tutor';
+  const subject    = searchParams.get('subject')    || 'Session';
+  const avatar     = searchParams.get('avatar')     || 'TU';
+  const slot       = searchParams.get('slot')       || 'Mon 10:00 AM';
+  const hourlyRate = Number(searchParams.get('hourlyRate')) || 2500;
 
-  const [formData, setFormData] = useState<FormData>({
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormData>({
     studentName: '', studentId: '', email: '', phone: '',
-    duration: '', sessionType: '', topic: '', notes: '', paymentMethod: '',
+    duration: '', sessionType: '', topic: '', notes: '',
+    paymentMethod: 'card', agreeTerms: false,
   });
-  const [errors,        setErrors]        = useState<Errors>({});
-  const [touched,       setTouched]       = useState<Record<string, boolean>>({});
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [loading,       setLoading]       = useState(false);
-  const [topicLen,      setTopicLen]      = useState(0);
+  const [errors,  setErrors]  = useState<Errors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const hourlyRate  = tutor.hourlyRate;
-  const hours       = formData.duration ? Number(formData.duration) : 0;
-  const subtotal    = hourlyRate * hours;
-  const platformFee = Math.round(subtotal * 0.05);
-  const total       = subtotal + platformFee;
+  // ✅ Auto-fill from localStorage
+  useEffect(() => {
+    const username = localStorage.getItem('username') || '';
+    setForm(prev => ({
+      ...prev,
+      studentId: username,
+      email: username ? `${username}@my.sliit.lk` : '',
+    }));
+  }, []);
 
-  /* ── Update a field + live validate ──────────────────────────── */
-  const update = (field: Field, value: string) => {
-    const updated = { ...formData, [field]: value };
-    setFormData(updated);
-    if (field === 'topic') setTopicLen(value.trim().length);
+  const hours    = form.duration ? Number(form.duration) : 0;
+  const subtotal = hourlyRate * hours;
+  const fee      = Math.round(subtotal * 0.05);
+  const total    = subtotal + fee;
 
+  const update = (field: string, value: string | boolean) => {
+    const updated = { ...form, [field]: value };
+    setForm(updated);
     if (touched[field]) {
-      setErrors(prev => ({ ...prev, [field]: validateField(field, value, updated) }));
-    }
-    // Re-validate email when studentId changes (and vice versa)
-    if (field === 'studentId' && touched.email) {
-      setErrors(prev => ({ ...prev, email: validateField('email', updated.email, updated) }));
-    }
-    if (field === 'email' && touched.studentId) {
-      setErrors(prev => ({ ...prev, studentId: validateField('studentId', updated.studentId, updated) }));
+      setErrors(prev => ({ ...prev, [field]: validate(field, value, updated) }));
     }
   };
 
-  const handleBlur = (field: Field) => {
+  const blur = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    setErrors(prev => ({ ...prev, [field]: validateField(field, formData[field], formData) }));
+    setErrors(prev => ({ ...prev, [field]: validate(field, form[field as keyof FormData] as string | boolean, form) }));
   };
 
-  /* ── Run all validations on submit ───────────────────────────── */
-  const runAll = (): boolean => {
-    const fields: Field[] = ['studentName','studentId','email','phone','duration','sessionType','topic','paymentMethod'];
-    const newErrors: Errors = {};
-    const newTouched: Record<string, boolean> = {};
-
-    fields.forEach(f => {
-      newTouched[f] = true;
-      const err = validateField(f, formData[f], formData);
-      if (err) newErrors[f] = err;
+  const demoFill = () => {
+    const username = localStorage.getItem('username') || 'it24100001';
+    setForm({
+      studentName: 'Ishan Ekanayaka',
+      studentId: username,
+      email: `${username}@my.sliit.lk`,
+      phone: '0771234567',
+      duration: '1',
+      sessionType: 'online',
+      topic: 'Need help understanding database normalization and SQL query optimization techniques.',
+      notes: 'Please focus on practical examples with real datasets.',
+      paymentMethod: 'card',
+      agreeTerms: true,
     });
+    setErrors({});
+    setTouched({});
+  };
 
-    if (!agreedToTerms) newErrors.terms = 'You must agree to the Terms & Conditions to proceed.';
-
-    setTouched(newTouched);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const nextStep = () => {
+    const step1Fields = ['studentName', 'studentId', 'email'];
+    const e: Errors = {};
+    step1Fields.forEach(f => {
+      const msg = validate(f, form[f as keyof FormData] as string, form);
+      if (msg) (e as any)[f] = msg;
+    });
+    setTouched(prev => ({ ...prev, studentName: true, studentId: true, email: true }));
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!runAll()) return;
+    const allErrors = validateAll(form);
+    setErrors(allErrors);
+    setTouched(Object.fromEntries(Object.keys(form).map(k => [k, true])));
+    if (Object.keys(allErrors).length > 0) return;
 
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
+    setSubmitError('');
 
-    localStorage.setItem('lastBooking', JSON.stringify({
-      tutorId: tutor.id, tutorName: tutor.name, subject: tutor.subject,
-      slot, ...formData, total, status: 'PENDING',
-    }));
-    router.push('/tutor-booking/confirmation');
-  };
+    // Parse slot time
+    let timePart = '10:00:00';
+    const timeMatch = slot.match(/(\d{1,2}):(\d{2})/);
+    const isPM = slot.toLowerCase().includes('pm');
+    if (timeMatch) {
+      let hrs = parseInt(timeMatch[1]);
+      const mins = timeMatch[2];
+      if (isPM && hrs !== 12) hrs += 12;
+      if (!isPM && hrs === 12) hrs = 0;
+      timePart = `${hrs.toString().padStart(2, '0')}:${mins}:00`;
+    }
 
-  /* ── Demo fill ────────────────────────────────────────────────── */
-  const handleDemoFill = () => {
-    const demo: FormData = {
-      studentName: 'Ishan Ekanayaka',
-      studentId:   'IT22156700',
-      email:       'it22156700@my.sliit.lk',
-      phone:       '0771234567',
-      duration:    '2',
-      sessionType: 'online',
-      topic:       'Binary Trees and Graph Algorithms for upcoming exam.',
-      notes:       'I need help with BFS and DFS implementations.',
-      paymentMethod: 'card',
+    const today = new Date();
+    today.setDate(today.getDate() + 3);
+    const dateStr = today.toISOString().split('T')[0];
+
+    const payload = {
+      studentId:       1,
+      studentName:     form.studentName,
+      studentUsername: form.studentId.toLowerCase(),
+      tutorId:         Number(tutorId),
+      tutorName:       tutorName,
+      tutorAvatar:     avatar,
+      subject:         subject,
+      slot:            slot,
+      date:            dateStr,
+      scheduledSlot:   `${dateStr}T${timePart}`,
+      duration:        `${form.duration} Hour${Number(form.duration) > 1 ? 's' : ''}`,
+      sessionType:     form.sessionType.charAt(0).toUpperCase() + form.sessionType.slice(1),
+      topic:           form.topic,
+      notes:           form.notes || 'No additional notes',
+      paymentMethod:   form.paymentMethod,
+      totalPrice:      total,
+      status:          'PENDING',
     };
-    setFormData(demo);
-    setTopicLen(demo.topic.trim().length);
-    setAgreedToTerms(true);
-    setErrors({});
-    setTouched({
-      studentName: true, studentId: true, email: true, phone: true,
-      duration: true, sessionType: true, topic: true, paymentMethod: true,
-    });
+
+    try {
+      const res = await fetch('http://localhost:8081/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        localStorage.setItem('lastBooking', JSON.stringify(result));
+        router.push('/tutor-booking/confirmation');
+      } else {
+        setSubmitError(result.message || 'Booking failed. Please try again.');
+      }
+    } catch {
+      setSubmitError('Cannot connect to server. Make sure booking service is running on port 8081.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ── Field styling ────────────────────────────────────────────── */
-  const fc = (field: Field) => {
-    const base = 'w-full px-5 py-3.5 bg-slate-50 rounded-2xl outline-none text-sm font-bold text-slate-800 placeholder:text-slate-300 transition-all border';
-    if (!touched[field])  return `${base} border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100`;
-    if (errors[field])    return `${base} border-red-400 bg-red-50 focus:border-red-400 focus:ring-2 focus:ring-red-100`;
-    return `${base} border-emerald-400 bg-emerald-50/30 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100`;
-  };
+  // Field component
+  const Field = ({ label, error, required, children }: {
+    label: string; error?: string; required?: boolean; children: React.ReactNode;
+  }) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      {children}
+      {error && (
+        <p className="text-red-500 text-xs font-bold flex items-center gap-1">
+          <span>⚠</span> {error}
+        </p>
+      )}
+    </div>
+  );
 
-  const Badge = ({ field }: { field: Field }) =>
-    touched[field] && !errors[field] ? (
-      <span className="text-[10px] font-black text-emerald-500">Valid</span>
-    ) : null;
+  const inputCls = (field: string) =>
+    `w-full px-4 py-3.5 rounded-2xl border-2 text-sm font-semibold text-slate-800 outline-none transition-all bg-white
+    ${touched[field] && errors[field as keyof Errors]
+      ? 'border-red-300 bg-red-50'
+      : touched[field] && !errors[field as keyof Errors]
+      ? 'border-emerald-400'
+      : 'border-slate-200 focus:border-indigo-400 hover:border-slate-300'}`;
 
-  const ErrMsg = ({ field }: { field: Field | 'terms' }) =>
-    errors[field] ? (
-      <p className="text-red-500 text-[11px] font-bold mt-1.5 ml-1 flex items-center gap-1">
-        <span>⚠</span> {errors[field]}
-      </p>
-    ) : null;
+  const PAYMENT_OPTIONS = [
+    { value: 'card',     label: 'Credit / Debit Card', icon: '💳' },
+    { value: 'bank',     label: 'Bank Transfer',        icon: '🏦' },
+    { value: 'cash',     label: 'Cash on Session',      icon: '💵' },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 pb-20">
 
-      {/* Demo fill button */}
+      {/* Demo Fill */}
       <button
-        onClick={handleDemoFill}
-        className="fixed bottom-8 right-8 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all hover:scale-105"
+        type="button" onClick={demoFill}
+        className="fixed bottom-8 right-8 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 hover:scale-105 transition-all"
       >
-        Demo Fill
+        ⚡ Demo Fill
       </button>
 
-      {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-6 py-10">
-        <div className="max-w-3xl mx-auto">
-          <button
-            onClick={() => router.back()}
-            className="text-indigo-200 text-sm font-bold mb-6 flex items-center gap-2 hover:text-white transition-colors"
-          >
+      {/* Hero */}
+      <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 px-6 py-10 text-white">
+        <div className="max-w-2xl mx-auto">
+          <button type="button" onClick={() => router.back()}
+            className="text-indigo-200 text-sm font-bold mb-6 hover:text-white transition-colors flex items-center gap-1">
             ← Back to Profile
           </button>
-          <h1 className="text-3xl font-black text-white mb-2">Book a Session</h1>
-          <p className="text-indigo-200 font-medium">Complete the form below to confirm your booking.</p>
+          <h1 className="text-3xl font-black mb-1">Book a Session</h1>
+          <p className="text-indigo-200 text-sm font-medium mb-6">Complete the form below to confirm your booking</p>
 
-          <div className="mt-6 bg-white/15 backdrop-blur rounded-3xl p-5 border border-white/20 flex items-center gap-4">
-            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center font-black text-white text-lg">
-              {tutor.avatar}
+          {/* Tutor Card */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-5 border border-white/20 flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center font-black text-xl border border-white/30">
+              {avatar}
             </div>
-            <div className="flex-1">
-              <p className="font-black text-white">{tutor.name}</p>
-              <p className="text-indigo-200 text-sm">{tutor.subject}</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-lg leading-tight">{tutorName}</p>
+              <p className="text-indigo-200 text-sm font-medium">{subject}</p>
             </div>
-            <div className="text-right">
-              <p className="text-yellow-300 font-black">{slot}</p>
-              <p className="text-indigo-200 text-sm">Rs. {hourlyRate.toLocaleString()} / hr</p>
+            <div className="text-right flex-shrink-0">
+              <p className="text-yellow-300 font-black text-sm">{slot}</p>
+              <p className="text-indigo-200 text-xs font-bold mt-0.5">Rs. {hourlyRate.toLocaleString()} / hr</p>
             </div>
+          </div>
+
+          {/* Step Indicator */}
+          <div className="flex items-center gap-3 mt-6">
+            {[1, 2].map(s => (
+              <div key={s} className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                  step >= s ? 'bg-white text-indigo-700' : 'bg-white/20 text-white/60'
+                }`}>
+                  {step > s ? '✓' : s}
+                </div>
+                <span className={`text-xs font-bold ${step >= s ? 'text-white' : 'text-white/40'}`}>
+                  {s === 1 ? 'Your Details' : 'Session & Payment'}
+                </span>
+                {s < 2 && <div className={`w-12 h-0.5 rounded-full ${step > s ? 'bg-white' : 'bg-white/20'}`} />}
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      <div className="max-w-2xl mx-auto px-6 py-8">
+        <form onSubmit={handleSubmit} noValidate>
 
-          {/* ── Section 1: Student Details ──────────────────────── */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-            <h2 className="text-base font-black text-slate-900 mb-6 flex items-center gap-2">
-              <span className="w-7 h-7 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-black">1</span>
-              Student Details
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Full Name */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Full Name *</label>
-                  <Badge field="studentName" />
+          {/* ── STEP 1: Student Details ── */}
+          {step === 1 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-sm font-black">1</div>
+                  <div>
+                    <h2 className="font-black text-slate-900">Your Details</h2>
+                    <p className="text-slate-400 text-xs font-medium">Tell us who you are</p>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  placeholder="Your full name"
-                  value={formData.studentName}
-                  onChange={e => update('studentName', e.target.value)}
-                  onBlur={() => handleBlur('studentName')}
-                  className={fc('studentName')}
-                />
-                <ErrMsg field="studentName" />
+
+                <div className="space-y-5">
+                  <Field label="Full Name" error={errors.studentName} required>
+                    <input
+                      type="text"
+                      value={form.studentName}
+                      onChange={e => update('studentName', e.target.value)}
+                      onBlur={() => blur('studentName')}
+                      placeholder="Kasun Perera"
+                      className={inputCls('studentName')}
+                    />
+                  </Field>
+
+                  <Field label="Student ID (Username)" error={errors.studentId} required>
+                    <input
+                      type="text"
+                      value={form.studentId}
+                      onChange={e => update('studentId', e.target.value.toLowerCase())}
+                      onBlur={() => blur('studentId')}
+                      placeholder="it24100001"
+                      className={`${inputCls('studentId')} font-mono tracking-widest`}
+                    />
+                    {!errors.studentId && (
+                      <p className="text-[10px] text-slate-400 font-bold mt-1">
+                        Format: <span className="text-amber-500">2 letters</span> + <span className="text-sky-500">8 digits</span>
+                      </p>
+                    )}
+                  </Field>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Email Address" error={errors.email} required>
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={e => update('email', e.target.value)}
+                        onBlur={() => blur('email')}
+                        placeholder="it24100001@my.sliit.lk"
+                        className={inputCls('email')}
+                      />
+                    </Field>
+                    <Field label="Phone (Optional)" error={errors.phone}>
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={e => update('phone', e.target.value)}
+                        onBlur={() => blur('phone')}
+                        placeholder="+94 77 123 4567"
+                        className={inputCls('phone')}
+                      />
+                    </Field>
+                  </div>
+                </div>
               </div>
 
-              {/* Student ID */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Student ID *</label>
-                  <Badge field="studentId" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="IT22156700"
-                  value={formData.studentId}
-                  onChange={e => update('studentId', e.target.value.toUpperCase())}
-                  onBlur={() => handleBlur('studentId')}
-                  maxLength={10}
-                  className={`${fc('studentId')} font-mono tracking-widest`}
-                />
-                {!formData.studentId && (
-                  <p className="text-[10px] font-bold mt-1.5 ml-1 text-slate-400">
-                    <span className="text-amber-500">2 letters</span> + <span className="text-sky-500">8 digits</span>
-                    <span className="text-slate-300"> · e.g. </span>
-                    <span className="text-indigo-400 font-mono">IT22156700</span>
-                  </p>
-                )}
-                <ErrMsg field="studentId" />
-              </div>
-
-              {/* SLIIT Email */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">SLIIT Email *</label>
-                  <Badge field="email" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="it22156700@my.sliit.lk"
-                  value={formData.email}
-                  onChange={e => update('email', e.target.value.toLowerCase())}
-                  onBlur={() => handleBlur('email')}
-                  className={fc('email')}
-                />
-                {!formData.email && (
-                  <p className="text-[10px] font-bold mt-1.5 ml-1 text-slate-400">
-                    Must match Student ID + <span className="text-indigo-500">@my.sliit.lk</span>
-                  </p>
-                )}
-                <ErrMsg field="email" />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Phone Number *</label>
-                  <Badge field="phone" />
-                </div>
-                <input
-                  type="tel"
-                  placeholder="077XXXXXXX"
-                  value={formData.phone}
-                  onChange={e => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  onBlur={() => handleBlur('phone')}
-                  maxLength={10}
-                  className={fc('phone')}
-                />
-                {!formData.phone && (
-                  <p className="text-[10px] font-bold mt-1.5 ml-1 text-slate-400">
-                    10 digits · starts with <span className="text-indigo-500">070–078</span>
-                  </p>
-                )}
-                <ErrMsg field="phone" />
-              </div>
+              <button
+                type="button" onClick={nextStep}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                Continue to Session Details →
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* ── Section 2: Session Details ──────────────────────── */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-            <h2 className="text-base font-black text-slate-900 mb-6 flex items-center gap-2">
-              <span className="w-7 h-7 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-black">2</span>
-              Session Details
-            </h2>
+          {/* ── STEP 2: Session + Payment ── */}
+          {step === 2 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Duration */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Duration *</label>
-                  <Badge field="duration" />
+              {/* Session Details */}
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-sm font-black">2</div>
+                  <div>
+                    <h2 className="font-black text-slate-900">Session Details</h2>
+                    <p className="text-slate-400 text-xs font-medium">Configure your session</p>
+                  </div>
                 </div>
-                <select
-                  value={formData.duration}
-                  onChange={e => update('duration', e.target.value)}
-                  onBlur={() => handleBlur('duration')}
-                  className={fc('duration')}
-                >
-                  <option value="">Select duration</option>
-                  <option value="1">1 Hour — Rs. {hourlyRate.toLocaleString()}</option>
-                  <option value="2">2 Hours — Rs. {(hourlyRate * 2).toLocaleString()}</option>
-                  <option value="3">3 Hours — Rs. {(hourlyRate * 3).toLocaleString()}</option>
-                </select>
-                <ErrMsg field="duration" />
+
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Duration" error={errors.duration} required>
+                      <select
+                        value={form.duration}
+                        onChange={e => update('duration', e.target.value)}
+                        onBlur={() => blur('duration')}
+                        className={inputCls('duration')}
+                      >
+                        <option value="">Select duration</option>
+                        <option value="1">1 Hour</option>
+                        <option value="2">2 Hours</option>
+                        <option value="3">3 Hours</option>
+                      </select>
+                    </Field>
+
+                    <Field label="Session Type" error={errors.sessionType} required>
+                      <select
+                        value={form.sessionType}
+                        onChange={e => update('sessionType', e.target.value)}
+                        onBlur={() => blur('sessionType')}
+                        className={inputCls('sessionType')}
+                      >
+                        <option value="">Select type</option>
+                        <option value="online">💻 Online</option>
+                        <option value="physical">📍 Physical</option>
+                      </select>
+                    </Field>
+                  </div>
+
+                  <Field label="What do you need help with?" error={errors.topic} required>
+                    <textarea
+                      value={form.topic}
+                      onChange={e => update('topic', e.target.value)}
+                      onBlur={() => blur('topic')}
+                      placeholder="Describe the topic, specific areas you're struggling with, or learning goals..."
+                      rows={4}
+                      className={`${inputCls('topic')} resize-none`}
+                    />
+                    <p className="text-[10px] text-slate-300 font-bold text-right">{form.topic.length} chars</p>
+                  </Field>
+
+                  <Field label="Additional Notes (Optional)">
+                    <textarea
+                      value={form.notes}
+                      onChange={e => update('notes', e.target.value)}
+                      placeholder="Any special requests, preferred teaching style, materials needed..."
+                      rows={3}
+                      className={`${inputCls('notes')} resize-none`}
+                    />
+                  </Field>
+                </div>
               </div>
 
-              {/* Session Type */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Session Type *</label>
-                  <Badge field="sessionType" />
+              {/* Payment Method */}
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <h3 className="font-black text-slate-900 mb-4">Payment Method</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  {PAYMENT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => update('paymentMethod', opt.value)}
+                      className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                        form.paymentMethod === opt.value
+                          ? 'border-indigo-500 bg-indigo-50 shadow-md shadow-indigo-100'
+                          : 'border-slate-200 hover:border-indigo-300'
+                      }`}
+                    >
+                      <p className="text-2xl mb-1">{opt.icon}</p>
+                      <p className={`text-[10px] font-black leading-tight ${
+                        form.paymentMethod === opt.value ? 'text-indigo-700' : 'text-slate-500'
+                      }`}>{opt.label}</p>
+                    </button>
+                  ))}
                 </div>
-                <select
-                  value={formData.sessionType}
-                  onChange={e => update('sessionType', e.target.value)}
-                  onBlur={() => handleBlur('sessionType')}
-                  className={fc('sessionType')}
-                >
-                  <option value="">Select type</option>
-                  <option value="online">Online (Google Meet)</option>
-                  <option value="physical">Physical (SLIIT Campus)</option>
-                </select>
-                <ErrMsg field="sessionType" />
               </div>
-            </div>
 
-            {/* Topic */}
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-                  Topic / What Do You Need Help With? *
+              {/* Booking Summary */}
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <h3 className="font-black text-slate-900 mb-5">Booking Summary</h3>
+
+                {/* Details */}
+                <div className="bg-slate-50 rounded-2xl p-5 mb-5 space-y-3">
+                  {[
+                    { label: 'Tutor',    value: tutorName },
+                    { label: 'Subject',  value: subject   },
+                    { label: 'Slot',     value: slot      },
+                    { label: 'Duration', value: form.duration ? `${form.duration} Hour${Number(form.duration) > 1 ? 's' : ''}` : '—' },
+                    { label: 'Type',     value: form.sessionType ? (form.sessionType === 'online' ? '💻 Online' : '📍 Physical') : '—' },
+                    { label: 'Payment',  value: PAYMENT_OPTIONS.find(p => p.value === form.paymentMethod)?.label || '—' },
+                  ].map(row => (
+                    <div key={row.label} className="flex justify-between items-center">
+                      <span className="text-xs font-black text-slate-400 uppercase tracking-wide">{row.label}</span>
+                      <span className="text-sm font-bold text-slate-700">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Price Breakdown */}
+                {hours > 0 && (
+                  <div className="space-y-2 mb-5">
+                    <div className="flex justify-between text-sm font-bold text-slate-500">
+                      <span>Rs. {hourlyRate.toLocaleString()} × {hours} hr{hours > 1 ? 's' : ''}</span>
+                      <span>Rs. {subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-slate-400">
+                      <span>Platform fee (5%)</span>
+                      <span>Rs. {fee.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-black text-lg text-indigo-600 pt-3 border-t border-slate-200">
+                      <span>Total</span>
+                      <span>Rs. {total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Terms */}
+                <label className="flex items-start gap-3 cursor-pointer mb-5">
+                  <div className="relative mt-0.5 flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={form.agreeTerms}
+                      onChange={e => update('agreeTerms', e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                      form.agreeTerms ? 'bg-indigo-600 border-indigo-600' : errors.agreeTerms ? 'border-red-400' : 'border-slate-300'
+                    }`}>
+                      {form.agreeTerms && <span className="text-white text-xs font-black">✓</span>}
+                    </div>
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 leading-relaxed">
+                    I agree to the UniSphere{' '}
+                    <span className="text-indigo-600 font-bold">Terms of Service</span> and{' '}
+                    <span className="text-indigo-600 font-bold">Cancellation Policy</span>.
+                    Cancellations must be made at least 2 hours before the session.
+                  </span>
                 </label>
-                <span className={`text-[10px] font-black tabular-nums ${
-                  topicLen > 500 ? 'text-red-500' : topicLen >= 10 ? 'text-emerald-500' : 'text-slate-400'
-                }`}>
-                  {topicLen} / 500
-                </span>
-              </div>
-              <textarea
-                placeholder="Describe the topic or problem you need help with..."
-                rows={3}
-                value={formData.topic}
-                onChange={e => update('topic', e.target.value)}
-                onBlur={() => handleBlur('topic')}
-                className={`${fc('topic')} resize-none`}
-              />
-              {/* Min length progress bar */}
-              {formData.topic && topicLen < 10 && (
-                <div className="mt-1.5 h-1 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-400 rounded-full transition-all duration-300"
-                    style={{ width: `${(topicLen / 10) * 100}%` }}
-                  />
-                </div>
-              )}
-              <ErrMsg field="topic" />
-            </div>
-
-            {/* Notes (optional) */}
-            <div className="mt-5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 mb-2 block">
-                Additional Notes <span className="font-medium normal-case tracking-normal text-slate-300">(Optional)</span>
-              </label>
-              <textarea
-                placeholder="Any special requirements or questions..."
-                rows={2}
-                value={formData.notes}
-                onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none text-sm font-bold text-slate-800 placeholder:text-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
-              />
-            </div>
-          </div>
-
-          {/* ── Section 3: Payment ──────────────────────────────── */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-            <h2 className="text-base font-black text-slate-900 mb-6 flex items-center gap-2">
-              <span className="w-7 h-7 bg-indigo-600 text-white rounded-lg flex items-center justify-center text-xs font-black">3</span>
-              Payment Method
-            </h2>
-
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              {[
-                { value: 'card', label: 'Credit / Debit Card', icon: '💳' },
-                { value: 'bank', label: 'Bank Transfer',       icon: '🏦' },
-                { value: 'cash', label: 'Cash on Session',     icon: '💵' },
-              ].map(method => (
-                <button
-                  key={method.value}
-                  type="button"
-                  onClick={() => {
-                    update('paymentMethod', method.value);
-                    setTouched(prev => ({ ...prev, paymentMethod: true }));
-                  }}
-                  className={`p-4 rounded-2xl border-2 text-center transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                    formData.paymentMethod === method.value
-                      ? 'border-indigo-500 bg-indigo-50 shadow-md shadow-indigo-100'
-                      : errors.paymentMethod && touched.paymentMethod
-                        ? 'border-red-300 bg-red-50'
-                        : 'border-slate-200 bg-slate-50 hover:border-indigo-300'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{method.icon}</div>
-                  <p className={`text-[10px] font-black leading-tight ${
-                    formData.paymentMethod === method.value ? 'text-indigo-600' : 'text-slate-500'
-                  }`}>
-                    {method.label}
+                {errors.agreeTerms && (
+                  <p className="text-red-500 text-xs font-bold mb-4 flex items-center gap-1">
+                    <span>⚠</span> {errors.agreeTerms}
                   </p>
-                </button>
-              ))}
-            </div>
-            <ErrMsg field="paymentMethod" />
+                )}
 
-            {/* Price breakdown */}
-            {hours > 0 && (
-              <div className="mt-6 bg-slate-50 rounded-2xl p-5 space-y-2 border border-slate-100">
-                <div className="flex justify-between text-sm font-bold text-slate-600">
-                  <span>Session ({hours}hr × Rs. {hourlyRate.toLocaleString()})</span>
-                  <span>Rs. {subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold text-slate-400">
-                  <span>Platform Fee (5%)</span>
-                  <span>Rs. {platformFee.toLocaleString()}</span>
-                </div>
-                <div className="border-t border-slate-200 pt-2 flex justify-between font-black text-slate-900">
-                  <span>Total</span>
-                  <span className="text-indigo-600 text-lg">Rs. {total.toLocaleString()}</span>
+                {submitError && (
+                  <div className="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-2">
+                    <span className="text-red-500">⚠️</span>
+                    <p className="text-red-600 text-sm font-bold">{submitError}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="px-6 py-4 rounded-2xl border-2 border-slate-200 text-slate-600 font-black text-sm hover:border-slate-300 transition-all"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading || hours === 0}
+                    className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
+                    ) : (
+                      `Confirm Booking${total > 0 ? ` — Rs. ${total.toLocaleString()}` : ''}`
+                    )}
+                  </button>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* ── Section 4: Terms & Submit ───────────────────────── */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-
-            <label className={`flex items-start gap-3 cursor-pointer mb-2 p-4 rounded-2xl border-2 transition-all ${
-              errors.terms
-                ? 'border-red-300 bg-red-50'
-                : agreedToTerms
-                  ? 'border-emerald-400 bg-emerald-50/30'
-                  : 'border-slate-200 hover:border-indigo-300'
-            }`}>
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={e => {
-                  setAgreedToTerms(e.target.checked);
-                  if (e.target.checked) setErrors(prev => ({ ...prev, terms: undefined }));
-                  else setErrors(prev => ({ ...prev, terms: 'You must agree to the Terms & Conditions to proceed.' }));
-                }}
-                className="mt-0.5 w-4 h-4 accent-indigo-600 flex-shrink-0"
-              />
-              <span className="text-sm font-bold text-slate-600 leading-relaxed">
-                I agree to the{' '}
-                <span className="text-indigo-600 underline cursor-pointer">Terms & Conditions</span>
-                {' '}and understand that cancellations must be made at least 2 hours before the session.
-              </span>
-            </label>
-            <ErrMsg field="terms" />
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-4 rounded-2xl font-black text-lg transition-all active:scale-95 flex items-center justify-center gap-3 mt-5 ${
-                loading
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-100 hover:scale-[1.01]'
-              }`}
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-4 border-slate-300 border-t-white rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Confirm Booking${hours > 0 ? ` — Rs. ${total.toLocaleString()}` : ''}`
-              )}
-            </button>
-          </div>
-
+            </div>
+          )}
         </form>
       </div>
     </div>
+  );
+}
+
+export default function BookingFormPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    }>
+      <BookingFormContent />
+    </Suspense>
   );
 }
