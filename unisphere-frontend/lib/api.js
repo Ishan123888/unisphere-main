@@ -335,3 +335,8 @@ export async function resolveStudentByEmail(email) {
   const response = await fetch(`${BASE_URL}/auth/student/resolve?email=${encodeURIComponent(email)}`);
   return handleResponse(response);
 }
+
+export async function getVerificationCertificate(achievementId) {
+  const response = await fetch(`${BASE_URL}/student/achievements/${achievementId}/verification-certificate`);
+  return handleResponse(response);
+}

@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { deleteAchievement } from "../../lib/api";
 import Modal from "../Modal";
 import AchievementForm from "./AchievementForm";
+import VerificationCertificateOverlay from "./VerificationCertificateOverlay";
 
 const BASE = "http://localhost:8084";
 
@@ -30,6 +31,7 @@ export default function AchievementList({ achievements, studentId, onRefresh, to
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, title: "" });
   const [editAchievement, setEditAchievement] = useState(null);
   const [deleting, setDeleting]       = useState(false);
+  const [certOverlay, setCertOverlay] = useState({ open: false, achievementId: null });
 
   // sort newest first, then filter
   const displayed = useMemo(() => {
@@ -156,6 +158,18 @@ export default function AchievementList({ achievements, studentId, onRefresh, to
               )}
 
               <div className="btn-row" style={{ marginTop: 12 }}>
+                {item.status === "APPROVED" && (
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => setCertOverlay({ open: true, achievementId: item.id })}
+                    title="Get verification certificate"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 4 }}>
+                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Get Certificate
+                  </button>
+                )}
                 <button
                   className="btn btn-info btn-sm"
                   onClick={() => openEdit(item)}
@@ -218,6 +232,15 @@ export default function AchievementList({ achievements, studentId, onRefresh, to
         onCancel={() => setDeleteModal({ open: false, id: null, title: "" })}
         loading={deleting}
       />
+
+      {/* Verification Certificate Overlay */}
+      {certOverlay.open && (
+        <VerificationCertificateOverlay
+          achievementId={certOverlay.achievementId}
+          onClose={() => setCertOverlay({ open: false, achievementId: null })}
+          toast={toast}
+        />
+      )}
     </>
   );
 }

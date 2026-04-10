@@ -1,7 +1,9 @@
 package com.unisphere.portfolio.controller;
 
+import com.unisphere.portfolio.dto.VerificationCertificateResponse;
 import com.unisphere.portfolio.entity.Achievement;
 import com.unisphere.portfolio.service.AchievementService;
+import com.unisphere.portfolio.service.CertificateService;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +18,11 @@ import java.util.Map;
 public class StudentAchievementController {
 
     private final AchievementService achievementService;
+    private final CertificateService certificateService;
 
-    public StudentAchievementController(AchievementService achievementService) {
+    public StudentAchievementController(AchievementService achievementService, CertificateService certificateService) {
         this.achievementService = achievementService;
+        this.certificateService = certificateService;
     }
 
     @PostMapping(consumes = {"multipart/form-data"})
@@ -72,5 +76,10 @@ public class StudentAchievementController {
     public ResponseEntity<Map<String, String>> deleteAchievement(@PathVariable Long id) {
         achievementService.deleteAchievement(id);
         return ResponseEntity.ok(Map.of("message", "Achievement deleted successfully"));
+    }
+
+    @GetMapping("/{id}/verification-certificate")
+    public ResponseEntity<VerificationCertificateResponse> getVerificationCertificate(@PathVariable Long id) {
+        return ResponseEntity.ok(certificateService.generateVerificationCertificate(id));
     }
 }

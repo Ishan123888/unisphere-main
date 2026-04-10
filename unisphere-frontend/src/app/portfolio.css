@@ -293,3 +293,13 @@
 .portfolio-root .confirm-label { font-size: 12px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.4px; min-width: 90px; flex-shrink: 0; }
 .portfolio-root .confirm-value { font-size: 13px; color: var(--gray-800); font-weight: 500; word-break: break-word; }
 .portfolio-root .confirm-submit-note { font-size: 12px; color: var(--gray-500); line-height: 1.6; padding: 10px 14px; background: var(--warning-light); border-radius: var(--radius-sm); border-left: 3px solid var(--warning); }
+
+/* VERIFICATION CERTIFICATE */
+.portfolio-root .certificate-display { background: var(--white); border-radius: var(--radius); border: 2px solid var(--primary); padding: 28px; }
+.portfolio-root .certificate-header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid var(--primary); }
+.portfolio-root .certificate-content { display: flex; flex-direction: column; gap: 16px; }
+.portfolio-root .cert-section { display: flex; flex-direction: column; gap: 4px; }
+.portfolio-root .cert-label { font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.5px; }
+.portfolio-root .cert-value { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+.portfolio-root .btn-info { background: var(--info); color: white; }
+.portfolio-root .btn-info:hover:not(:disabled) { background: #0284c7; transform: translateY(-1px); }
