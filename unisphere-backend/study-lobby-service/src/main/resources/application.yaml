@@ -6,9 +6,9 @@ spring:
         name: study-lobby-service
 
     datasource:
-        url: jdbc:mysql://localhost:3300/study_lobby_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+        url: jdbc:mysql://localhost:3306/study_lobby_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
         username: root
-        password: 31415
+        password: sql2025#zinD
         driver-class-name: com.mysql.cj.jdbc.Driver
 
     jpa:

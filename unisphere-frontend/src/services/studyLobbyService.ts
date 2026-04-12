@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Hardcoded Study Lobby API endpoint
-const STUDY_LOBBY_API_BASE = 'http://localhost:8084/api/lobbies';
+const STUDY_LOBBY_API_BASE = 'http://localhost:8083/api/lobbies';
 
 // Interfaces
 export interface CreateLobbyRequest {
@@ -34,8 +34,8 @@ export interface LobbyResponse {
   status: string;
   isFull: boolean;
   createdAt: string;
-  startedAt: string;
-  endedAt: string;
+  startedAt: string | null;
+  endedAt: string | null;
 }
 
 export interface ParticipantResponse {
