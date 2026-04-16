@@ -15,7 +15,7 @@ import Footer from '@/components/Footer';
 ════════════════════════════════════════════════════════════════════ */
 const EMAILJS_SERVICE_ID  = 'service_h5tncpr';
 const EMAILJS_TEMPLATE_ID = 'template_2eyuv9u';
-const EMAILJS_PUBLIC_KEY  = 'enFVrQEcG2OLmaq0-';
+const EMAILJS_PUBLIC_KEY  = 'RC_x_gkPkk7O6EeZQ';
 
 /*
   EmailJS Template variables used (set these in your template):

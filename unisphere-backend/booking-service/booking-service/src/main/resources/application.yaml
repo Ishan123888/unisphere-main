@@ -4,26 +4,29 @@ server:
 spring:
   application:
     name: booking-service
-
   datasource:
-    url: jdbc:h2:mem:bookingdb
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: password
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
+    url: jdbc:mysql://localhost:3306/unisphere_identity?createDatabaseIfNotExist=true
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: update
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
+# Cloudinary configurations
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:your_cloud_name_here}
+  api-key: ${CLOUDINARY_API_KEY:your_api_key_here}
+  api-secret: ${CLOUDINARY_API_SECRET:your_api_secret_here}
+
+# Service Discovery (Eureka) Disabled
 eureka:
   client:
-    enabled: false
     register-with-eureka: false
     fetch-registry: false
+    enabled: false

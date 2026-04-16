@@ -1,86 +1,44 @@
 package com.unisphere.booking.controller;
 
-import com.unisphere.booking.dto.APIResponse;
 import com.unisphere.booking.model.Booking;
-import com.unisphere.booking.service.BookingService;
-import lombok.RequiredArgsConstructor;
+import com.unisphere.booking.repository.BookingRepository;
+import com.unisphere.booking.service.ReportService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintWriter;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.io.ByteArrayInputStream;
 
 @RestController
-@RequestMapping("/api/reports")
-@RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/v1/reports")
+@CrossOrigin(origins = "*") // Frontend එකට access දීමට
 public class ReportController {
 
-    private final BookingService bookingService;
+    @Autowired
+    private ReportService reportService;
 
-    /* ── 1. Download booking invoice as text/plain (PDF-ready) ───── */
-    @GetMapping("/invoice/{bookingId}")
-    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Long bookingId) {
-        Booking booking = bookingService.getBookingById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found: " + bookingId));
+    @Autowired
+    private BookingRepository bookingRepository;
 
-        String invoiceText = buildInvoiceText(booking);
-        byte[] bytes = invoiceText.getBytes();
+    @GetMapping(value = "/invoice/{id}", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<InputStreamResource> getInvoice(@PathVariable Long id) {
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=invoice-" + booking.getBookingRef() + ".txt")
-                .contentType(MediaType.TEXT_PLAIN)
-                .body(bytes);
-    }
+        // Database එකෙන් Booking එක සොයා ගැනීම
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-    /* ── 2. Tutor session summary report ─────────────────────────── */
-    @GetMapping("/tutor/{tutorId}/summary")
-    public ResponseEntity<APIResponse<String>> tutorSummary(@PathVariable Long tutorId) {
-        List<Booking> bookings = bookingService.getBookingsByTutorId(tutorId);
+        ByteArrayInputStream bis = reportService.generateBookingInvoice(booking);
 
-        long completed = bookings.stream()
-                .filter(b -> b.getStatus() == Booking.BookingStatus.COMPLETED).count();
-        double earnings = bookings.stream()
-                .filter(b -> b.getStatus() != Booking.BookingStatus.CANCELLED
-                        && b.getTotalPrice() != null)
-                .mapToDouble(b -> b.getTotalPrice().doubleValue()).sum();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "inline; filename=invoice.pdf");
 
-        String summary = String.format(
-                "Tutor ID: %d | Total Sessions: %d | Completed: %d | Total Earnings: LKR %.2f",
-                tutorId, bookings.size(), completed, earnings);
-
-        return ResponseEntity.ok(APIResponse.ok("Summary generated", summary));
-    }
-
-    /* ── Helper ───────────────────────────────────────────────────── */
-    private String buildInvoiceText(Booking b) {
-        return "========================================\n" +
-                "          UNISPHERE INVOICE             \n" +
-                "========================================\n" +
-                "Booking Ref  : " + b.getBookingRef() + "\n" +
-                "Date Issued  : " + LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm")) + "\n" +
-                "----------------------------------------\n" +
-                "Student      : " + b.getStudentName() + " (" + b.getStudentUsername() + ")\n" +
-                "Tutor        : " + b.getTutorName() + "\n" +
-                "Subject      : " + b.getSubject() + "\n" +
-                "Session Date : " + b.getDate() + "\n" +
-                "Slot         : " + b.getSlot() + "\n" +
-                "Duration     : " + b.getDuration() + "\n" +
-                "Session Type : " + b.getSessionType() + "\n" +
-                "Status       : " + b.getStatus() + "\n" +
-                "----------------------------------------\n" +
-                "Total Amount : LKR " + (b.getTotalPrice() != null
-                ? b.getTotalPrice().toPlainString() : "0.00") + "\n" +
-                "Payment      : " + b.getPaymentMethod() + "\n" +
-                "========================================\n" +
-                "        Thank you for using UniSphere!  \n" +
-                "========================================\n";
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(bis));
     }
 }

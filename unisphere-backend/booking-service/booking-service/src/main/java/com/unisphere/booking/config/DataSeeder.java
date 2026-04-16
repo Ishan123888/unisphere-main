@@ -7,8 +7,9 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Component
+//@Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
 
@@ -24,6 +25,7 @@ public class DataSeeder implements CommandLineRunner {
                 .tutorId(1L).tutorName("Amal Perera").tutorAvatar("AP")
                 .subject("Data Structures & Algorithms")
                 .slot("Mon 10:00 AM").date("Mar 24, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 24, 10, 0))
                 .duration("2 Hours").sessionType("Online")
                 .topic("Binary Trees and Graph Algorithms")
                 .paymentMethod("card")
@@ -38,6 +40,7 @@ public class DataSeeder implements CommandLineRunner {
                 .tutorId(2L).tutorName("Dilki Jayawardena").tutorAvatar("DJ")
                 .subject("Database Management Systems")
                 .slot("Tue 3:00 PM").date("Mar 25, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 25, 15, 0))
                 .duration("1 Hour").sessionType("Physical")
                 .topic("Normalization and ERD Design")
                 .paymentMethod("cash")
@@ -51,6 +54,7 @@ public class DataSeeder implements CommandLineRunner {
                 .tutorId(5L).tutorName("Tharaka Silva").tutorAvatar("TS")
                 .subject("Web Technologies")
                 .slot("Fri 1:00 PM").date("Mar 21, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 21, 13, 0))
                 .duration("2 Hours").sessionType("Online")
                 .topic("React Hooks and State Management")
                 .paymentMethod("card")
@@ -64,6 +68,7 @@ public class DataSeeder implements CommandLineRunner {
                 .tutorId(4L).tutorName("Nethmi Rodrigo").tutorAvatar("NR")
                 .subject("Computer Networks")
                 .slot("Wed 11:00 AM").date("Mar 20, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 20, 11, 0))
                 .duration("1 Hour").sessionType("Physical")
                 .topic("TCP/IP Protocol Stack")
                 .paymentMethod("bank")
@@ -71,13 +76,13 @@ public class DataSeeder implements CommandLineRunner {
                 .status(Booking.BookingStatus.CANCELLED)
                 .build());
 
-        // Tutor 1 (Amal) incoming requests
         bookingRepository.save(Booking.builder()
                 .bookingRef("UNI-005")
                 .studentId(2L).studentName("Kasun Perera").studentUsername("it22345678")
                 .tutorId(1L).tutorName("Amal Perera").tutorAvatar("AP")
                 .subject("Data Structures & Algorithms")
                 .slot("Mon 2:00 PM").date("Mar 24, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 24, 14, 0))
                 .duration("2 Hours").sessionType("Online")
                 .topic("Dynamic Programming")
                 .paymentMethod("card")
@@ -91,6 +96,7 @@ public class DataSeeder implements CommandLineRunner {
                 .tutorId(1L).tutorName("Amal Perera").tutorAvatar("AP")
                 .subject("Data Structures & Algorithms")
                 .slot("Fri 9:00 AM").date("Mar 28, 2026")
+                .scheduledSlot(LocalDateTime.of(2026, 3, 28, 9, 0))
                 .duration("1 Hour").sessionType("Online")
                 .topic("Sorting Algorithms")
                 .paymentMethod("card")

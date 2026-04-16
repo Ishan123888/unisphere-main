@@ -1,2 +1,13 @@
+com\unisphere\identity\repository\UserCredentialRepository.class
+com\unisphere\identity\dto\AuthResponse$AuthResponseBuilder.class
+com\unisphere\identity\service\JwtService.class
+com\unisphere\identity\dto\AuthResponse.class
+com\unisphere\identity\service\AuthService.class
+com\unisphere\identity\config\AuthConfig.class
+com\unisphere\identity\service\CustomerUserDetails.class
+com\unisphere\identity\entity\UserCredential.class
+com\unisphere\identity\controller\AuthController.class
+com\unisphere\identity\service\CustomerUserDetailsService.class
 com\unisphere\identity\filter\JwtAuthenticationFilter.class
+com\unisphere\identity\IdentityServiceApplication.class
 com\unisphere\identity\controller\TutorController.class

@@ -49,16 +49,6 @@ const getStrength = (pw: string): { level: number; label: string; color: string 
   return { level: score, ...(map[score] ?? { label: 'Weak', color: 'bg-red-500' }) };
 };
 
-/*
-  LOGIN DEMO CREDENTIALS
-  These must match exactly what is saved in the database.
-  Before the presentation, register these accounts once using
-  the Register page (or use the DataSeeder in Spring Boot).
-
-  Student : it24100001 / Student@2026
-  Tutor   : it24100002 / Tutor@2026
-  Admin   : ad00000001 / Admin@2026  (seeded via DataLoader)
-*/
 const DEMOS = {
   student: { username: 'it24100001', password: 'Student@2026' },
   tutor:   { username: 'it24100002', password: 'Tutor@2026'   },
@@ -120,11 +110,23 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      const { token, role } = response.data;
+      // ✅ LOGIC UPDATE: Backend එකෙන් එන token, role සහ id ලබා ගැනීම
+      const { token, role, id } = response.data;
+
       if (token) {
-        localStorage.setItem('token',    token);
+        localStorage.setItem('token', token);
         localStorage.setItem('userRole', role || 'STUDENT');
         localStorage.setItem('username', formData.username.trim());
+
+        // ✅ LOGIC UPDATE: Backend එකෙන් එන ID එක නිවැරදිව localStorage හි save කිරීම
+        if (id) {
+          localStorage.setItem('userId', id.toString());
+          // Tutor කෙනෙක් නම් tutorId එක ලෙසද save කරනවා Dashboard එකේ ලේසියට
+          if (role === 'TUTOR') {
+            localStorage.setItem('tutorId', id.toString());
+          }
+        }
+
         const userRole = (role || 'STUDENT').toUpperCase();
 
         // After successful login, if STUDENT — resolve portfolio studentId by username
@@ -154,6 +156,9 @@ export default function LoginPage() {
         throw new Error('Token not received from server');
       }
     } catch (error: any) {
+<<<<<<< HEAD
+      console.error("Login failed:", error);
+=======
       // ── Identity-service failed — try portfolio student table as fallback ──
       try {
         const res = await fetch(
@@ -173,6 +178,7 @@ export default function LoginPage() {
         // portfolio also failed — fall through to show error
       }
 
+>>>>>>> DEV
       const msg = error.response?.data?.message || error.response?.data || error.message;
       setLoginErr(
         msg === 'Forbidden'
@@ -205,7 +211,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen relative flex items-center justify-center p-6">
 
-      {/* Background image */}
       <div className="fixed inset-0 z-0">
         <img
           src="https://i.imgur.com/bacrOw1.png"
@@ -223,7 +228,6 @@ export default function LoginPage() {
         <div className="rounded-[2rem] overflow-hidden shadow-2xl"
           style={{ boxShadow: '0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1)' }}>
 
-          {/* Banner */}
           <div className="relative h-28">
             <img
               src="https://i.imgur.com/bacrOw1.png"
@@ -240,7 +244,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Dark body */}
           <div className="bg-white/[0.04] border-x border-b border-white/[0.08] backdrop-blur-2xl px-8 md:px-10 pt-6 pb-8">
 
             <div className="text-center mb-7">
@@ -248,7 +251,6 @@ export default function LoginPage() {
               <p className="text-slate-500 text-sm font-medium mt-1.5">Sign in to your UniSphere account</p>
             </div>
 
-            {/* Demo fill */}
             <div className="mb-6">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-3 text-center">Quick Demo Fill</p>
               <div className="grid grid-cols-3 gap-2">
@@ -271,7 +273,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Login error */}
             {loginErr && (
               <div className="mb-5 px-5 py-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-start gap-3">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" className="w-4 h-4 mt-0.5 flex-shrink-0">
@@ -283,7 +284,6 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} noValidate className="space-y-5">
 
-              {/* Username */}
               <div>
                 <label className="flex items-center justify-between mb-2.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Username</span>
@@ -324,7 +324,6 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Password */}
               <div>
                 <label className="flex items-center justify-between mb-2.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Password</span>
