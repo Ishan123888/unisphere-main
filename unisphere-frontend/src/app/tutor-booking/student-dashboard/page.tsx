@@ -147,12 +147,25 @@ export default function StudentDashboardPage() {
                 {loading ? 'Loading...' : `${bookings.length} total sessions`}
               </p>
             </div>
+<<<<<<< HEAD
             <button
               onClick={() => router.push('/tutor-booking')}
               className="bg-white text-indigo-600 px-5 py-3 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all shadow-lg"
             >
               + Book a Tutor
             </button>
+=======
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.push('/portfolio')}
+                className="bg-white/15 border border-white/30 text-white px-5 py-3 rounded-2xl font-black text-sm hover:bg-white/25 transition-all shadow-lg flex items-center gap-2">
+                🎓 My Portfolio
+              </button>
+              <button onClick={() => router.push('/tutor-booking')}
+                className="bg-white text-indigo-600 px-5 py-3 rounded-2xl font-black text-sm hover:bg-indigo-50 transition-all shadow-lg">
+                + Book a Tutor
+              </button>
+            </div>
+>>>>>>> DEV
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
