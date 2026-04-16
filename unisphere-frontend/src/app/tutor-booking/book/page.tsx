@@ -1,7 +1,8 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+/* ─── Types ─────────────────────────────────────────── */
 interface FormData {
   studentName: string;
   studentId: string;
@@ -27,11 +28,19 @@ interface Errors {
   agreeTerms?: string;
 }
 
-const validate = (field: string, value: string | boolean, form: FormData): string | undefined => {
+/* ─── PayHere Config ─────────────────────────────────── */
+const PAYHERE_SANDBOX = true; // set false for production
+
+/* ─── Validation ────────────────────────────────────── */
+const validate = (
+  field: string,
+  value: string | boolean,
+  _form: FormData,
+): string | undefined => {
   switch (field) {
     case 'studentName':
       if (!String(value).trim()) return 'Full name is required';
-      if (String(value).trim().length < 3) return 'At least 3 characters';
+      if (String(value).trim().length < 3) return 'At least 3 characters required';
       if (!/^[A-Za-z\s]+$/.test(String(value))) return 'Letters only';
       break;
     case 'studentId':
@@ -44,18 +53,18 @@ const validate = (field: string, value: string | boolean, form: FormData): strin
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value))) return 'Invalid email address';
       break;
     case 'phone':
-      if (String(value).trim() && !/^[\d\s\+\-]{9,15}$/.test(String(value)))
+      if (String(value).trim() && !/^[\d\s+\-]{9,15}$/.test(String(value)))
         return 'Invalid phone number';
       break;
     case 'duration':
-      if (!value) return 'Please select duration';
+      if (!value) return 'Please select a duration';
       break;
     case 'sessionType':
-      if (!value) return 'Please select session type';
+      if (!value) return 'Please select a session type';
       break;
     case 'topic':
       if (!String(value).trim()) return 'Please describe what you need help with';
-      if (String(value).trim().length < 10) return 'At least 10 characters';
+      if (String(value).trim().length < 10) return 'Minimum 10 characters';
       break;
     case 'agreeTerms':
       if (!value) return 'You must agree to the terms';
@@ -65,16 +74,48 @@ const validate = (field: string, value: string | boolean, form: FormData): strin
 
 const validateAll = (form: FormData): Errors => {
   const e: Errors = {};
-  const fields: (keyof Errors)[] = ['studentName','studentId','email','duration','sessionType','topic','agreeTerms'];
+  const fields: (keyof Errors)[] = [
+    'studentName', 'studentId', 'email', 'phone',
+    'duration', 'sessionType', 'topic', 'agreeTerms',
+  ];
   fields.forEach(f => {
     const msg = validate(f, form[f as keyof FormData] as string | boolean, form);
-    if (msg) (e as any)[f] = msg;
+    if (msg) (e as Record<string, string>)[f] = msg;
   });
   return e;
 };
 
+/* ─── PayHere types ──────────────────────────────────── */
+declare global {
+  interface Window {
+    payhere: {
+      startPayment: (payment: Record<string, unknown>) => void;
+      onCompleted:  (id: string) => void;
+      onDismissed:  () => void;
+      onError:      (err: string) => void;
+    };
+  }
+}
+
+const loadPayHereScript = (): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (document.getElementById('payhere-sdk')) { resolve(); return; }
+    const script    = document.createElement('script');
+    script.id       = 'payhere-sdk';
+    script.src      = 'https://www.payhere.lk/lib/payhere.js';
+    script.onload   = () => resolve();
+    script.onerror  = () => reject(new Error('PayHere SDK failed to load'));
+    document.head.appendChild(script);
+  });
+
+const generateOrderId = () =>
+  `USP-${Date.now()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+
+/* ════════════════════════════════════════════════════════
+   Main Component
+   ════════════════════════════════════════════════════════ */
 function BookingFormContent() {
-  const router = useRouter();
+  const router       = useRouter();
   const searchParams = useSearchParams();
 
   const tutorId    = searchParams.get('tutorId')    || '';
@@ -84,69 +125,77 @@ function BookingFormContent() {
   const slot       = searchParams.get('slot')       || 'Mon 10:00 AM';
   const hourlyRate = Number(searchParams.get('hourlyRate')) || 2500;
 
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<FormData>({
+  const [step,         setStep]          = useState(1);
+  const [form,         setForm]          = useState<FormData>({
     studentName: '', studentId: '', email: '', phone: '',
     duration: '', sessionType: '', topic: '', notes: '',
-    paymentMethod: 'card', agreeTerms: false,
+    paymentMethod: 'payhere', agreeTerms: false,
   });
-  const [errors,  setErrors]  = useState<Errors>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [errors,       setErrors]        = useState<Errors>({});
+  const [touched,      setTouched]       = useState<Record<string, boolean>>({});
+  const [loading,      setLoading]       = useState(false);
+  const [submitError,  setSubmitError]   = useState('');
+  const [payhereReady, setPayhereReady]  = useState(false);
 
-  // ✅ Auto-fill from localStorage
+  const orderIdRef = useRef(generateOrderId());
+
   useEffect(() => {
     const username = localStorage.getItem('username') || '';
     setForm(prev => ({
       ...prev,
       studentId: username,
-      email: username ? `${username}@my.sliit.lk` : '',
+      email:     username ? `${username}@my.sliit.lk` : '',
     }));
   }, []);
 
+  useEffect(() => {
+    loadPayHereScript()
+      .then(() => setPayhereReady(true))
+      .catch(err => console.warn('PayHere SDK:', err));
+  }, []);
+
+  /* price */
   const hours    = form.duration ? Number(form.duration) : 0;
   const subtotal = hourlyRate * hours;
   const fee      = Math.round(subtotal * 0.05);
-  const total    = subtotal + fee;
+  const total    = subtotal + fee; // amount in LKR whole number e.g. 2625
 
-  const update = (field: string, value: string | boolean) => {
-    const updated = { ...form, [field]: value };
-    setForm(updated);
-    if (touched[field]) {
-      setErrors(prev => ({ ...prev, [field]: validate(field, value, updated) }));
-    }
-  };
+  /* field helpers — NO live validation on change */
+  const update = (field: string, value: string | boolean) =>
+    setForm(prev => ({ ...prev, [field]: value }));
 
   const blur = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    setErrors(prev => ({ ...prev, [field]: validate(field, form[field as keyof FormData] as string | boolean, form) }));
+    setErrors(prev => ({
+      ...prev,
+      [field]: validate(field, form[field as keyof FormData] as string | boolean, form),
+    }));
   };
 
   const demoFill = () => {
     const username = localStorage.getItem('username') || 'it24100001';
     setForm({
-      studentName: 'Ishan Ekanayaka',
-      studentId: username,
-      email: `${username}@my.sliit.lk`,
-      phone: '0771234567',
-      duration: '1',
-      sessionType: 'online',
-      topic: 'Need help understanding database normalization and SQL query optimization techniques.',
-      notes: 'Please focus on practical examples with real datasets.',
-      paymentMethod: 'card',
-      agreeTerms: true,
+      studentName:   'Ishan Ekanayaka',
+      studentId:     username,
+      email:         `${username}@my.sliit.lk`,
+      phone:         '0771234567',
+      duration:      '1',
+      sessionType:   'online',
+      topic:         'Need help understanding database normalization and SQL query optimization.',
+      notes:         'Please focus on practical examples with real datasets.',
+      paymentMethod: 'payhere',
+      agreeTerms:    true,
     });
     setErrors({});
     setTouched({});
   };
 
   const nextStep = () => {
-    const step1Fields = ['studentName', 'studentId', 'email'];
+    const step1Fields: (keyof Errors)[] = ['studentName', 'studentId', 'email'];
     const e: Errors = {};
     step1Fields.forEach(f => {
       const msg = validate(f, form[f as keyof FormData] as string, form);
-      if (msg) (e as any)[f] = msg;
+      if (msg) (e as Record<string, string>)[f] = msg;
     });
     setTouched(prev => ({ ...prev, studentName: true, studentId: true, email: true }));
     if (Object.keys(e).length > 0) { setErrors(e); return; }
@@ -154,6 +203,70 @@ function BookingFormContent() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /* ── PayHere: fetch hash from backend then open checkout ── */
+  const startPayHerePayment = async (bookingResult: Record<string, unknown>): Promise<void> => {
+    if (!payhereReady || !window.payhere)
+      throw new Error('PayHere SDK not ready. Please try again.');
+
+    /* 1. get hash from your backend (never expose merchant secret on frontend) */
+    const hashRes = await fetch('http://localhost:8081/api/payments/hash', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        orderId:  orderIdRef.current,
+        amount:   total,        // integer LKR e.g. 2625
+        currency: 'LKR',
+      }),
+    });
+
+    if (!hashRes.ok) throw new Error('Failed to generate payment hash. Please try again.');
+
+    const { hash, merchantId, amount: amountStr } = await hashRes.json();
+
+    /* 2. build payment object */
+    const [firstName, ...rest] = form.studentName.trim().split(' ');
+    const lastName = rest.join(' ') || '.';
+
+    const payment: Record<string, unknown> = {
+      sandbox:     PAYHERE_SANDBOX,
+      merchant_id: merchantId,         // from backend
+      return_url:  `${window.location.origin}/tutor-booking/confirmation`,
+      cancel_url:  `${window.location.origin}/tutor-booking/cancelled`,
+      notify_url:  'http://localhost:8081/api/payments/notify',
+      order_id:    orderIdRef.current,
+      items:       `Tutoring Session - ${subject} with ${tutorName}`,
+      amount:      amountStr,           // "2625.00" — from backend
+      currency:    'LKR',
+      hash,                            // required — from backend
+      first_name:  firstName,
+      last_name:   lastName,
+      email:       form.email,
+      phone:       form.phone || '0700000000',
+      address:     'SLIIT, Malabe',
+      city:        'Colombo',
+      country:     'Sri Lanka',
+      custom_1:    String(bookingResult.id || ''),
+      custom_2:    form.studentId,
+    };
+
+    /* 3. open PayHere popup */
+    return new Promise<void>((resolve, reject) => {
+      window.payhere.onCompleted = (id: string) => {
+        console.log('PayHere payment completed. ID:', id);
+        localStorage.setItem('lastBooking', JSON.stringify({ ...bookingResult, paymentId: id }));
+        resolve();
+      };
+      window.payhere.onDismissed = () => {
+        reject(new Error('Payment was cancelled. Your booking has been saved as pending.'));
+      };
+      window.payhere.onError = (err: string) => {
+        reject(new Error(`Payment error: ${err}`));
+      };
+      window.payhere.startPayment(payment);
+    });
+  };
+
+  /* ── Submit ─────────────────────────────────────────── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const allErrors = validateAll(form);
@@ -164,18 +277,17 @@ function BookingFormContent() {
     setLoading(true);
     setSubmitError('');
 
-    // Parse slot time
+    /* parse slot → scheduledSlot */
     let timePart = '10:00:00';
     const timeMatch = slot.match(/(\d{1,2}):(\d{2})/);
-    const isPM = slot.toLowerCase().includes('pm');
+    const isPM      = slot.toLowerCase().includes('pm');
     if (timeMatch) {
-      let hrs = parseInt(timeMatch[1]);
+      let hrs  = parseInt(timeMatch[1]);
       const mins = timeMatch[2];
       if (isPM && hrs !== 12) hrs += 12;
       if (!isPM && hrs === 12) hrs = 0;
       timePart = `${hrs.toString().padStart(2, '0')}:${mins}:00`;
     }
-
     const today = new Date();
     today.setDate(today.getDate() + 3);
     const dateStr = today.toISOString().split('T')[0];
@@ -185,10 +297,10 @@ function BookingFormContent() {
       studentName:     form.studentName,
       studentUsername: form.studentId.toLowerCase(),
       tutorId:         Number(tutorId),
-      tutorName:       tutorName,
+      tutorName,
       tutorAvatar:     avatar,
-      subject:         subject,
-      slot:            slot,
+      subject,
+      slot,
       date:            dateStr,
       scheduledSlot:   `${dateStr}T${timePart}`,
       duration:        `${form.duration} Hour${Number(form.duration) > 1 ? 's' : ''}`,
@@ -196,34 +308,47 @@ function BookingFormContent() {
       topic:           form.topic,
       notes:           form.notes || 'No additional notes',
       paymentMethod:   form.paymentMethod,
+      orderId:         orderIdRef.current,
       totalPrice:      total,
       status:          'PENDING',
     };
 
     try {
-      const res = await fetch('http://localhost:8081/api/bookings', {
-        method: 'POST',
+      const res    = await fetch('http://localhost:8081/api/bookings', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body:    JSON.stringify(payload),
       });
       const result = await res.json();
-      if (res.ok) {
+
+      if (!res.ok) {
+        setSubmitError(result.message || 'Booking failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      if (form.paymentMethod === 'payhere') {
+        try {
+          await startPayHerePayment(result);
+          router.push('/tutor-booking/confirmation');
+        } catch (payErr: unknown) {
+          setSubmitError(payErr instanceof Error ? payErr.message : 'Payment failed.');
+          setLoading(false);
+        }
+      } else {
         localStorage.setItem('lastBooking', JSON.stringify(result));
         router.push('/tutor-booking/confirmation');
-      } else {
-        setSubmitError(result.message || 'Booking failed. Please try again.');
       }
     } catch {
       setSubmitError('Cannot connect to server. Make sure booking service is running on port 8081.');
-    } finally {
       setLoading(false);
     }
   };
 
-  // Field component
-  const Field = ({ label, error, required, children }: {
-    label: string; error?: string; required?: boolean; children: React.ReactNode;
-  }) => (
+  /* ── UI helpers ─────────────────────────────────────── */
+  const Field = ({
+    label, error, required, children,
+  }: { label: string; error?: string; required?: boolean; children: React.ReactNode }) => (
     <div className="flex flex-col gap-1.5">
       <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
         {label} {required && <span className="text-red-400">*</span>}
@@ -240,21 +365,21 @@ function BookingFormContent() {
   const inputCls = (field: string) =>
     `w-full px-4 py-3.5 rounded-2xl border-2 text-sm font-semibold text-slate-800 outline-none transition-all bg-white
     ${touched[field] && errors[field as keyof Errors]
-      ? 'border-red-300 bg-red-50'
+      ? 'border-red-300 bg-red-50 focus:border-red-400'
       : touched[field] && !errors[field as keyof Errors]
-      ? 'border-emerald-400'
+      ? 'border-emerald-400 focus:border-emerald-500'
       : 'border-slate-200 focus:border-indigo-400 hover:border-slate-300'}`;
 
   const PAYMENT_OPTIONS = [
-    { value: 'card',     label: 'Credit / Debit Card', icon: '💳' },
-    { value: 'bank',     label: 'Bank Transfer',        icon: '🏦' },
-    { value: 'cash',     label: 'Cash on Session',      icon: '💵' },
+    { value: 'payhere', label: 'PayHere (Online)', icon: '🔒', desc: 'Card / Bank / Wallet' },
+    { value: 'bank',    label: 'Bank Transfer',    icon: '🏦', desc: 'Manual transfer'      },
+    { value: 'cash',    label: 'Cash on Session',  icon: '💵', desc: 'Pay at session'       },
   ];
 
+  /* ════ RENDER ════════════════════════════════════════ */
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 pb-20">
 
-      {/* Demo Fill */}
       <button
         type="button" onClick={demoFill}
         className="fixed bottom-8 right-8 z-50 bg-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 hover:scale-105 transition-all"
@@ -270,9 +395,10 @@ function BookingFormContent() {
             ← Back to Profile
           </button>
           <h1 className="text-3xl font-black mb-1">Book a Session</h1>
-          <p className="text-indigo-200 text-sm font-medium mb-6">Complete the form below to confirm your booking</p>
+          <p className="text-indigo-200 text-sm font-medium mb-6">
+            Complete the form below to confirm your booking
+          </p>
 
-          {/* Tutor Card */}
           <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-5 border border-white/20 flex items-center gap-4">
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center font-black text-xl border border-white/30">
               {avatar}
@@ -287,7 +413,6 @@ function BookingFormContent() {
             </div>
           </div>
 
-          {/* Step Indicator */}
           <div className="flex items-center gap-3 mt-6">
             {[1, 2].map(s => (
               <div key={s} className="flex items-center gap-2">
@@ -309,7 +434,7 @@ function BookingFormContent() {
       <div className="max-w-2xl mx-auto px-6 py-8">
         <form onSubmit={handleSubmit} noValidate>
 
-          {/* ── STEP 1: Student Details ── */}
+          {/* ── STEP 1 ── */}
           {step === 1 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
@@ -320,29 +445,22 @@ function BookingFormContent() {
                     <p className="text-slate-400 text-xs font-medium">Tell us who you are</p>
                   </div>
                 </div>
-
                 <div className="space-y-5">
                   <Field label="Full Name" error={errors.studentName} required>
-                    <input
-                      type="text"
-                      value={form.studentName}
+                    <input type="text" value={form.studentName}
                       onChange={e => update('studentName', e.target.value)}
                       onBlur={() => blur('studentName')}
-                      placeholder="Kasun Perera"
-                      className={inputCls('studentName')}
-                    />
+                      placeholder="Kasun Perera" autoComplete="name"
+                      className={inputCls('studentName')} />
                   </Field>
 
                   <Field label="Student ID (Username)" error={errors.studentId} required>
-                    <input
-                      type="text"
-                      value={form.studentId}
+                    <input type="text" value={form.studentId}
                       onChange={e => update('studentId', e.target.value.toLowerCase())}
                       onBlur={() => blur('studentId')}
-                      placeholder="it24100001"
-                      className={`${inputCls('studentId')} font-mono tracking-widest`}
-                    />
-                    {!errors.studentId && (
+                      placeholder="it24100001" autoComplete="username"
+                      className={`${inputCls('studentId')} font-mono tracking-widest`} />
+                    {!errors.studentId && !touched.studentId && (
                       <p className="text-[10px] text-slate-400 font-bold mt-1">
                         Format: <span className="text-amber-500">2 letters</span> + <span className="text-sky-500">8 digits</span>
                       </p>
@@ -351,43 +469,35 @@ function BookingFormContent() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Email Address" error={errors.email} required>
-                      <input
-                        type="email"
-                        value={form.email}
+                      <input type="email" value={form.email}
                         onChange={e => update('email', e.target.value)}
                         onBlur={() => blur('email')}
-                        placeholder="it24100001@my.sliit.lk"
-                        className={inputCls('email')}
-                      />
+                        placeholder="it24100001@my.sliit.lk" autoComplete="email"
+                        className={inputCls('email')} />
                     </Field>
                     <Field label="Phone (Optional)" error={errors.phone}>
-                      <input
-                        type="tel"
-                        value={form.phone}
+                      <input type="tel" value={form.phone}
                         onChange={e => update('phone', e.target.value)}
                         onBlur={() => blur('phone')}
-                        placeholder="+94 77 123 4567"
-                        className={inputCls('phone')}
-                      />
+                        placeholder="+94 77 123 4567" autoComplete="tel"
+                        className={inputCls('phone')} />
                     </Field>
                   </div>
                 </div>
               </div>
 
-              <button
-                type="button" onClick={nextStep}
-                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] flex items-center justify-center gap-2"
-              >
+              <button type="button" onClick={nextStep}
+                className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] flex items-center justify-center gap-2">
                 Continue to Session Details →
               </button>
             </div>
           )}
 
-          {/* ── STEP 2: Session + Payment ── */}
+          {/* ── STEP 2 ── */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
 
-              {/* Session Details */}
+              {/* Session */}
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-sm font-black">2</div>
@@ -396,30 +506,24 @@ function BookingFormContent() {
                     <p className="text-slate-400 text-xs font-medium">Configure your session</p>
                   </div>
                 </div>
-
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Duration" error={errors.duration} required>
-                      <select
-                        value={form.duration}
+                      <select value={form.duration}
                         onChange={e => update('duration', e.target.value)}
                         onBlur={() => blur('duration')}
-                        className={inputCls('duration')}
-                      >
+                        className={inputCls('duration')}>
                         <option value="">Select duration</option>
                         <option value="1">1 Hour</option>
                         <option value="2">2 Hours</option>
                         <option value="3">3 Hours</option>
                       </select>
                     </Field>
-
                     <Field label="Session Type" error={errors.sessionType} required>
-                      <select
-                        value={form.sessionType}
+                      <select value={form.sessionType}
                         onChange={e => update('sessionType', e.target.value)}
                         onBlur={() => blur('sessionType')}
-                        className={inputCls('sessionType')}
-                      >
+                        className={inputCls('sessionType')}>
                         <option value="">Select type</option>
                         <option value="online">💻 Online</option>
                         <option value="physical">📍 Physical</option>
@@ -428,79 +532,98 @@ function BookingFormContent() {
                   </div>
 
                   <Field label="What do you need help with?" error={errors.topic} required>
-                    <textarea
-                      value={form.topic}
+                    <textarea value={form.topic}
                       onChange={e => update('topic', e.target.value)}
                       onBlur={() => blur('topic')}
-                      placeholder="Describe the topic, specific areas you're struggling with, or learning goals..."
-                      rows={4}
-                      className={`${inputCls('topic')} resize-none`}
-                    />
+                      placeholder="Describe the topic, specific areas you're struggling with..."
+                      rows={4} className={`${inputCls('topic')} resize-none`} />
                     <p className="text-[10px] text-slate-300 font-bold text-right">{form.topic.length} chars</p>
                   </Field>
 
                   <Field label="Additional Notes (Optional)">
-                    <textarea
-                      value={form.notes}
+                    <textarea value={form.notes}
                       onChange={e => update('notes', e.target.value)}
-                      placeholder="Any special requests, preferred teaching style, materials needed..."
-                      rows={3}
-                      className={`${inputCls('notes')} resize-none`}
-                    />
+                      placeholder="Any special requests, preferred teaching style..."
+                      rows={3} className={`${inputCls('notes')} resize-none`} />
                   </Field>
                 </div>
               </div>
 
-              {/* Payment Method */}
+              {/* Payment */}
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
-                <h3 className="font-black text-slate-900 mb-4">Payment Method</h3>
+                <h3 className="font-black text-slate-900 mb-2">Payment Method</h3>
+                <p className="text-xs text-slate-400 font-medium mb-4">Choose how you'd like to pay</p>
                 <div className="grid grid-cols-3 gap-3">
                   {PAYMENT_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
+                    <button key={opt.value} type="button"
                       onClick={() => update('paymentMethod', opt.value)}
                       className={`p-4 rounded-2xl border-2 text-center transition-all ${
                         form.paymentMethod === opt.value
                           ? 'border-indigo-500 bg-indigo-50 shadow-md shadow-indigo-100'
                           : 'border-slate-200 hover:border-indigo-300'
-                      }`}
-                    >
+                      }`}>
                       <p className="text-2xl mb-1">{opt.icon}</p>
-                      <p className={`text-[10px] font-black leading-tight ${
-                        form.paymentMethod === opt.value ? 'text-indigo-700' : 'text-slate-500'
+                      <p className={`text-[10px] font-black leading-tight mb-0.5 ${
+                        form.paymentMethod === opt.value ? 'text-indigo-700' : 'text-slate-600'
                       }`}>{opt.label}</p>
+                      <p className={`text-[9px] font-medium ${
+                        form.paymentMethod === opt.value ? 'text-indigo-400' : 'text-slate-400'
+                      }`}>{opt.desc}</p>
                     </button>
                   ))}
                 </div>
+
+                {form.paymentMethod === 'payhere' && (
+                  <div className="mt-4 flex items-center gap-2 px-4 py-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                    <span className="text-emerald-600 text-sm">🔒</span>
+                    <p className="text-[10px] font-bold text-emerald-700">
+                      Secure checkout via PayHere · Visa · Mastercard · AMEX · eZCash · mCash
+                      {PAYHERE_SANDBOX && (
+                        <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px]">
+                          SANDBOX
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {form.paymentMethod === 'bank' && (
+                  <div className="mt-4 px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Bank Transfer Details</p>
+                    <p className="text-xs font-bold text-slate-700">Bank: Commercial Bank of Ceylon</p>
+                    <p className="text-xs font-bold text-slate-700">Account: UniSphere Pvt Ltd</p>
+                    <p className="text-xs font-bold text-slate-700">Account No: 1234567890</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">
+                      Use your order ID as reference. Confirm within 24 hours.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Booking Summary */}
+              {/* Summary */}
               <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
                 <h3 className="font-black text-slate-900 mb-5">Booking Summary</h3>
-
-                {/* Details */}
                 <div className="bg-slate-50 rounded-2xl p-5 mb-5 space-y-3">
                   {[
                     { label: 'Tutor',    value: tutorName },
                     { label: 'Subject',  value: subject   },
                     { label: 'Slot',     value: slot      },
-                    { label: 'Duration', value: form.duration ? `${form.duration} Hour${Number(form.duration) > 1 ? 's' : ''}` : '—' },
-                    { label: 'Type',     value: form.sessionType ? (form.sessionType === 'online' ? '💻 Online' : '📍 Physical') : '—' },
-                    { label: 'Payment',  value: PAYMENT_OPTIONS.find(p => p.value === form.paymentMethod)?.label || '—' },
+                    { label: 'Duration', value: form.duration ? `${form.duration} Hour${Number(form.duration)>1?'s':''}` : '—' },
+                    { label: 'Type',     value: form.sessionType ? (form.sessionType==='online'?'💻 Online':'📍 Physical') : '—' },
+                    { label: 'Payment',  value: PAYMENT_OPTIONS.find(p=>p.value===form.paymentMethod)?.label || '—' },
+                    { label: 'Order ID', value: orderIdRef.current },
                   ].map(row => (
                     <div key={row.label} className="flex justify-between items-center">
                       <span className="text-xs font-black text-slate-400 uppercase tracking-wide">{row.label}</span>
-                      <span className="text-sm font-bold text-slate-700">{row.value}</span>
+                      <span className="text-sm font-bold text-slate-700 text-right max-w-[60%] truncate">{row.value}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Price Breakdown */}
                 {hours > 0 && (
                   <div className="space-y-2 mb-5">
                     <div className="flex justify-between text-sm font-bold text-slate-500">
-                      <span>Rs. {hourlyRate.toLocaleString()} × {hours} hr{hours > 1 ? 's' : ''}</span>
+                      <span>Rs. {hourlyRate.toLocaleString()} × {hours} hr{hours>1?'s':''}</span>
                       <span>Rs. {subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold text-slate-400">
@@ -514,17 +637,22 @@ function BookingFormContent() {
                   </div>
                 )}
 
-                {/* Terms */}
+                {/* Terms checkbox */}
                 <label className="flex items-start gap-3 cursor-pointer mb-5">
                   <div className="relative mt-0.5 flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={form.agreeTerms}
-                      onChange={e => update('agreeTerms', e.target.checked)}
-                      className="sr-only"
-                    />
+                    <input type="checkbox" checked={form.agreeTerms}
+                      onChange={e => {
+                        update('agreeTerms', e.target.checked);
+                        setTouched(prev => ({ ...prev, agreeTerms: true }));
+                        setErrors(prev => ({
+                          ...prev,
+                          agreeTerms: e.target.checked ? undefined : 'You must agree to the terms',
+                        }));
+                      }}
+                      className="sr-only" />
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      form.agreeTerms ? 'bg-indigo-600 border-indigo-600' : errors.agreeTerms ? 'border-red-400' : 'border-slate-300'
+                      form.agreeTerms ? 'bg-indigo-600 border-indigo-600'
+                        : errors.agreeTerms ? 'border-red-400' : 'border-slate-300'
                     }`}>
                       {form.agreeTerms && <span className="text-white text-xs font-black">✓</span>}
                     </div>
@@ -543,32 +671,39 @@ function BookingFormContent() {
                 )}
 
                 {submitError && (
-                  <div className="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-2">
-                    <span className="text-red-500">⚠️</span>
+                  <div className="mb-4 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2">
+                    <span className="text-red-500 mt-0.5">⚠️</span>
                     <p className="text-red-600 text-sm font-bold">{submitError}</p>
                   </div>
                 )}
 
                 <div className="flex gap-3">
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={() => { setStep(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    className="px-6 py-4 rounded-2xl border-2 border-slate-200 text-slate-600 font-black text-sm hover:border-slate-300 transition-all"
-                  >
+                    className="px-6 py-4 rounded-2xl border-2 border-slate-200 text-slate-600 font-black text-sm hover:border-slate-300 transition-all">
                     ← Back
                   </button>
-                  <button
-                    type="submit"
+                  <button type="submit"
                     disabled={loading || hours === 0}
-                    className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2"
-                  >
+                    className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-base hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2">
                     {loading ? (
-                      <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Processing...</>
+                      <>
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {form.paymentMethod === 'payhere' ? 'Connecting to PayHere...' : 'Processing...'}
+                      </>
+                    ) : form.paymentMethod === 'payhere' ? (
+                      `Pay via PayHere${total > 0 ? ` — Rs. ${total.toLocaleString()}` : ''} 🔒`
                     ) : (
                       `Confirm Booking${total > 0 ? ` — Rs. ${total.toLocaleString()}` : ''}`
                     )}
                   </button>
                 </div>
+
+                {form.paymentMethod === 'payhere' && total > 0 && (
+                  <p className="text-center text-[10px] text-slate-400 font-medium mt-3">
+                    You'll be redirected to PayHere's secure checkout to complete payment.
+                  </p>
+                )}
               </div>
             </div>
           )}
