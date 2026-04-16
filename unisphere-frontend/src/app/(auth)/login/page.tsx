@@ -156,9 +156,9 @@ export default function LoginPage() {
         throw new Error('Token not received from server');
       }
     } catch (error: any) {
-<<<<<<< HEAD
+
       console.error("Login failed:", error);
-=======
+
       // ── Identity-service failed — try portfolio student table as fallback ──
       try {
         const res = await fetch(
@@ -178,7 +178,7 @@ export default function LoginPage() {
         // portfolio also failed — fall through to show error
       }
 
->>>>>>> DEV
+
       const msg = error.response?.data?.message || error.response?.data || error.message;
       setLoginErr(
         msg === 'Forbidden'
