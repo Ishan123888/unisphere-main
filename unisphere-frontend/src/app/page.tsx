@@ -13,7 +13,7 @@ const STATS = [
 const FEATURES = [
   { icon: '🎓', title: 'Smart Tutor Booking', desc: 'AI-powered matching connects you with the perfect SLIIT tutor in seconds. Filter by subject, rating, price and availability.', gradient: 'from-violet-600 to-indigo-600', link: '/login', tag: 'Most Popular' },
   { icon: '🛒', title: 'Student Marketplace', desc: 'Buy and sell textbooks, equipment and digital resources within the SLIIT community. Safe, verified, instant.', gradient: 'from-orange-500 to-rose-600', link: '/login', tag: 'New' },
-  { icon: '🏠', title: 'Study Lobby', desc: 'Create or join virtual study rooms with real-time collaboration tools and shared whiteboards.', gradient: 'from-teal-500 to-emerald-600', link: '/login', tag: 'Beta' },
+  { icon: '🏠', title: 'Study Lobby', desc: 'Create or join virtual study rooms with real-time collaboration tools and shared whiteboards.', gradient: 'from-teal-500 to-emerald-600', link: '/study-lobby', tag: 'Beta' },
 ];
 
 const TUTORS = [
