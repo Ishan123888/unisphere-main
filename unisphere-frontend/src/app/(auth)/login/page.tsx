@@ -389,7 +389,7 @@ export default function LoginPage() {
                 </Link>
               </p>
               <p className="text-xs font-bold text-slate-600">
-                Are you an admin?{' '}
+                Portfolio &amp; Session Admin?{' '}
                 <Link href="/admin-login" className="text-amber-400 hover:text-amber-300 font-black transition-colors">
                   Login here →
                 </Link>

@@ -94,14 +94,14 @@ export default function AdminLoginPage() {
             UniSphere
           </h1>
           <p style={{ margin: "6px 0 0", color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 500 }}>
-            Portfolio Admin Panel
+            Sign in to Portfolio Admin Panel
           </p>
         </div>
 
         {/* Form body */}
         <div style={{ padding: "32px 40px 36px" }}>
           <p style={{ margin: "0 0 24px", color: "rgba(255,255,255,0.5)", fontSize: 13, textAlign: "center" }}>
-            Sign in with your admin credentials
+            Sign in with your portfolio admin credentials
           </p>
 
           {/* Error */}
@@ -225,7 +225,7 @@ export default function AdminLoginPage() {
                   }} />
                   Signing in...
                 </>
-              ) : "Sign In to Admin Panel"}
+              ) : "Sign in to Portfolio Admin Panel"}
             </button>
           </form>
 
