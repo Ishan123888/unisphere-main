@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { ShoppingCart, Tag, User } from "lucide-react";
 import { ItemResponseDto } from "@/types";
 import { formatPrice, formatDate, formatCategory, getImageUrl } from "@/lib/utils";
@@ -15,7 +16,10 @@ interface ItemCardProps {
  * Displays individual marketplace item
  */
 export const ItemCard: React.FC<ItemCardProps> = ({ item, onViewDetails }) => {
+  const router = useRouter();
+
   const handleCardClick = () => {
+    router.push(`/item/${item.itemId}`);
     onViewDetails?.(item.itemId);
   };
 
@@ -99,7 +103,8 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, onViewDetails }) => {
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
           onClick={(e) => {
             e.stopPropagation();
-            // TODO: Implement add to cart
+            // Navigate to item detail
+            router.push(`/item/${item.itemId}`);
           }}
         >
           <ShoppingCart className="w-4 h-4" />

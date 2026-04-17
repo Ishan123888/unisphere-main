@@ -6,7 +6,7 @@
 export const config = {
   // API Configuration
   API: {
-    BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1",
+    BASE_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085/api/v1",
     ENDPOINTS: {
       MARKETPLACE: "/marketplace",
       ITEMS: "/marketplace",

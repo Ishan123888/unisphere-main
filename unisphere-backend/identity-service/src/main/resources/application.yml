@@ -9,7 +9,7 @@ spring:
     # JDBC අකුරු small විය යුතුයි, database නම නිවැරදිද බලන්න
     url: jdbc:mysql://localhost:3306/unisphere_identity?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
     username: root
-    password: "" # ඔයාට password එකක් නැත්නම් මෙහෙම හිස්ව තියන්න (Quotes ඇතුළේ)
+    password: osloCC@123
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:

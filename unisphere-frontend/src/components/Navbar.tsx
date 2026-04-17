@@ -50,6 +50,7 @@ export default function Navbar() {
     { label: '📚 Study Lobby', path: '/study-lobby', icon: '📚' },
     { label: '💬 Chat', path: '/chat', icon: '💬' },
     { label: '📖 Tutor Booking', path: '/tutor-booking', icon: '📖' },
+    { label: '🛒 Marketplace', path: '/marketplace', icon: '🛒' },
     { label: '📋 Contact', path: '/contact', icon: '📋' },
   ];
 

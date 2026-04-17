@@ -55,13 +55,13 @@ export const getImageUrl = (imageUrl: string | null | undefined): string => {
   
   // If it starts with /api, construct full URL
   if (imageUrl.startsWith("/api")) {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085/api/v1";
     const baseUrl = apiBaseUrl.replace("/api/v1", "");
     return baseUrl + imageUrl;
   }
   
   // If it's just a filename, construct the full path
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085/api/v1";
   return `${apiBaseUrl}/uploads/${imageUrl}`;
 };
 

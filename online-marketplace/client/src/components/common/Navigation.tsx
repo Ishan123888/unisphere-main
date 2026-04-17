@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ShoppingBag, HomeIcon, Plus, BarChart3 } from "lucide-react";
+import { ShoppingBag, HomeIcon, Plus, BarChart3, Package } from "lucide-react";
 
 /**
  * Navigation Component
@@ -29,7 +29,7 @@ export const Navigation: React.FC = () => {
               title="Home"
             >
               <HomeIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">UniSphere Home</span>
             </Link>
 
             <Link
@@ -57,6 +57,15 @@ export const Navigation: React.FC = () => {
             >
               <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Dashboard</span>
+            </Link>
+
+            <Link
+              href="/order-history"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition-colors text-sm sm:text-base"
+              title="Order History"
+            >
+              <Package className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">My Orders</span>
             </Link>
           </div>
         </div>

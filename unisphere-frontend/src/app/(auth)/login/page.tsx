@@ -388,12 +388,14 @@ export default function LoginPage() {
                   Register as a Member
                 </Link>
               </p>
-              <p className="text-xs font-bold text-slate-600">
-                Are you an admin?{' '}
-                <Link href="/admin-login" className="text-amber-400 hover:text-amber-300 font-black transition-colors">
-                  Login here →
+              <div className="pt-1 space-y-2">
+                <p className="text-[11px] font-black text-slate-600 uppercase tracking-widest mb-2">Admin Access</p>
+                <Link href="/admin-login"
+                  className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
+                  <span className="text-base">🎓</span>
+                  <span className="text-[11px] font-black text-amber-400">Portfolio &amp; Session Admin →</span>
                 </Link>
-              </p>
+              </div>
             </div>
           </div>
         </div>
