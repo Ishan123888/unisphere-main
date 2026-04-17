@@ -52,7 +52,8 @@ export default function BookingLayout({ children }: { children: React.ReactNode 
 
   const quickLinks = [
     { name: 'Home',        path: '/',            icon: '🏠' },
-    { name: 'Marketplace', path: '/marketplace', icon: '🛒' },
+   // { name: 'Marketplace', path: '/marketplace', icon: '🛒' },
+   { name: 'marketplace', path: 'http://localhost:3001', icon: '🛒' },
   ];
 
   const menuItems = userRole === 'TUTOR'

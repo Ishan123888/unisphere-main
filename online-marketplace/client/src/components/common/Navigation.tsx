@@ -24,7 +24,7 @@ export const Navigation: React.FC = () => {
           {/* Navigation Links */}
           <div className="flex items-center gap-2 sm:gap-4">
             <Link
-              href="/"
+              href="http://localhost:3000"
               className="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-gray-900 transition-colors text-sm sm:text-base"
               title="Home"
             >
