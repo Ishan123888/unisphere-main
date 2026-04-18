@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:run:portfolio": "cypress run --spec cypress/e2e/portfolio/**"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -23,10 +26,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@testing-library/cypress": "^10.1.0",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^15.14.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4.2.2",
